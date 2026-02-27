@@ -16,8 +16,8 @@ class DatabaseProjectMember(BaseModel):
     project_id: Optional[str] = None
     role: Optional[str] = None
     kpi_score: Optional[float] = None
-    max_capacity: int = None
-    current_load: int = None
+    max_capacity: Optional[int] = None
+    current_load: Optional[int] = None
 
 
 @db_router.post("/projects/{project_id}/members")
@@ -34,7 +34,7 @@ def db_create_member(project_id: int, member: DatabaseProjectMember):
             "role": member.role,
             "kpi_score": member.kpi_score,
             "max_capacity": member.max_capacity,
-            "current_load": member.current_load
+            "current_load": member.current_load,
         }
 
         columns = []
@@ -48,10 +48,10 @@ def db_create_member(project_id: int, member: DatabaseProjectMember):
 
         if not columns:
             raise HTTPException(status_code=400, detail="No data provided for insert")
-        
+
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load;"
+        sql = f"INSERT INTO public.project_member ({cols_sql}) VALUES ({vals_sql}) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -78,7 +78,7 @@ def db_get_members(project_id: int):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
             "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id = %s",
-            (str(project_id))
+            (project_id,)
         )
         rows = cur.fetchall()
         return rows
@@ -95,8 +95,8 @@ def db_get_member_by_id(project_id: int, member_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id AND user_id = %s LIMIT 1;",
-            (str(project_id), str(member_id)),
+            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id = %s AND user_id = %s LIMIT 1;",
+            (project_id, member_id),
         )
         row = cur.fetchone()
         if row is None:

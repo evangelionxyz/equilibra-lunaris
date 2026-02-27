@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
+from routers.auth import get_current_user_optional
 import psycopg2
 import psycopg2.extras
 
@@ -21,7 +22,7 @@ class DatabaseProject(BaseModel):
 
 
 @db_router.post("/projects")
-def db_create_project(project: DatabaseProject):
+def db_create_project(project: DatabaseProject, current_user: dict | None = Depends(get_current_user_optional)):
     conn = _get_conn()
     cur = None
     try:
@@ -52,9 +53,32 @@ def db_create_project(project: DatabaseProject):
         sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at;"
 
         cur.execute(sql, params)
-        conn.commit()
         row = cur.fetchone()
-        return row
+
+        # if a user is authenticated, create a project_member entry for them as Owner
+        try:
+            if row is None:
+                raise HTTPException(status_code=500, detail="Failed to create project")
+
+            project_id = row.get("id")
+
+            if current_user:
+                member_id = _generator.generate()
+                owner_user_id = int(current_user.get("id") or 0)
+
+                member_sql = (
+                    "INSERT INTO public.project_member (id, user_id, project_id, role, max_capacity, current_load) "
+                    "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load;"
+                )
+                cur.execute(member_sql, (member_id, owner_user_id, project_id, "Owner", 100, 0))
+                # consume the returned row
+                _ = cur.fetchone()
+
+            conn.commit()
+            return row
+        except Exception:
+            conn.rollback()
+            raise
     except HTTPException:
         conn.rollback()
         raise

@@ -69,6 +69,20 @@ async def get_current_user(
     return resp.json()
 
 
+async def get_current_user_optional(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> dict | None:
+    """
+    Same as `get_current_user` but returns None instead of raising when
+    authentication is missing/invalid. Useful for endpoints where auth is optional.
+    """
+    try:
+        return await get_current_user(request, credentials)
+    except HTTPException:
+        return None
+
+
 @router.get("/login")
 def auth_login():
     """
