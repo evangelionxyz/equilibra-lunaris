@@ -5,10 +5,10 @@ import httpx
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from config import settings
-from database import DatabaseUser, get_or_create_user
+from services.database.users import DatabaseUser, get_or_create_user
 from starlette.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/auth", tags=["Auth"])

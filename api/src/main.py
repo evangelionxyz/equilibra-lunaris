@@ -2,13 +2,18 @@ import sys
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
+from routers import auth, github, meetings
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 import uvicorn
 from fastapi import FastAPI
 from routers import auth, github
-from database import router as db_router, create_pool, close_pool
+from services.database.database import router as db_router, create_pool, close_pool
+from services.database import users as _db_users
+from services.database import projects as _db_projects
+from services.database import buckets as _db_buckets
+from services.database import tasks as _db_tasks
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -16,20 +21,9 @@ if sys.platform == 'win32':
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create the DB pool on startup and close it on shutdown."""
-    # create_pool is synchronous (psycopg2); call it on startup
     create_pool()
     yield
     close_pool()
-#from database import close_pool, create_pool
-from routers import auth, github, meetings
-
-#@asynccontextmanager
-#async def lifespan(app: FastAPI):
-#    """Create the DB pool on startup and close it on shutdown."""
-#    await create_pool()
-#    yield
-#    await close_pool()
-
 
 app = FastAPI(title="Lunaris API", version="0.1.0", lifespan=lifespan)
 @app.get("/")
