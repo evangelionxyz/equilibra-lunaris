@@ -9,6 +9,7 @@ on:
       - "api/**"
       - ".github/workflows/ci.yml"
   pull_request:
+    branches: "master"
     paths:
       - "equilibra/**"
       - "api/**"
