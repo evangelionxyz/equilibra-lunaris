@@ -1,4 +1,4 @@
-const BASE_URL = "/api";
+const BASE_URL = "http://localhost:8000";
 
 export async function apiFetch<T>(
   endpoint: string,
@@ -26,7 +26,7 @@ export async function apiFetch<T>(
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         errorData.detail ||
-        `API Error: ${response.status} ${response.statusText}`,
+          `API Error: ${response.status} ${response.statusText}`,
       );
     }
 

@@ -25,7 +25,7 @@ export const userService = {
       }));
   },
 
-  getMembershipsForUser: async (userId: number): Promise<ProjectMember[]> => {
+  getMembershipsForUser: async (): Promise<ProjectMember[]> => {
     return await apiFetch<ProjectMember[]>("/users/me/project_members");
   },
 

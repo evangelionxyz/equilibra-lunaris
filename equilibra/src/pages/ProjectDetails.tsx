@@ -159,7 +159,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         {/* MoM & Meetings */}
         {activeTab === 'MoM & Meetings' && (
           <div className="space-y-6">
-            <MeetingIntelligenceTab projectId={projectId} />
+            <MeetingIntelligenceTab
+              projectId={projectId}
+              onMeetingCreated={createMeeting}
+            />
 
             <SurfaceCard
               title="Historical Meetings"

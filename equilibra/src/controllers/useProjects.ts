@@ -21,7 +21,7 @@ export const useProjects = () => {
       setLoading(true);
       const [data, mems] = await Promise.all([
         projectService.getMyProjects(),
-        userService.getMembershipsForUser(userId),
+        userService.getMembershipsForUser(),
       ]);
       setProjects(data);
       setMemberships(mems);
@@ -46,7 +46,10 @@ export const useProjects = () => {
     ) => {
       try {
         const ownerId = user?.db_user?.id;
-        const created = await projectService.createProjectWithOwner(data as Project, ownerId);
+        const created = await projectService.createProjectWithOwner(
+          data as Project,
+          ownerId,
+        );
         setProjects((prev) => [created, ...prev]);
 
         // add local membership for UI immediately

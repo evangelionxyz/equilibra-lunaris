@@ -3,12 +3,15 @@ import type { Meeting } from "../models";
 
 export const meetingService = {
   getMeetingsByProject: async (projectId: number): Promise<Meeting[]> => {
-    const meetings = await apiFetch<Meeting[]>("/meetings");
-    // Ensure all meetings belong to the project in this simple implementation
-    return meetings.map((m) => ({
-      ...m,
-      project_id: projectId,
-    }));
+    return await apiFetch<Meeting[]>(`/meetings/project/${projectId}`);
+  },
+
+  createMeeting: async (meetingData: any): Promise<Meeting> => {
+    return await apiFetch<Meeting>("/meetings", {
+      method: "POST",
+      body: JSON.stringify(meetingData),
+      headers: { "Content-Type": "application/json" },
+    });
   },
 
   analyzeMeeting: async (

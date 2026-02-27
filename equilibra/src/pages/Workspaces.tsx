@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Briefcase, Target, Plus, Trash2 } from 'lucide-react';
+import { Briefcase, Plus, Trash2 } from 'lucide-react';
 import { ProjectCard } from '../components/dashboard/ProjectCard';
 import { useProjects } from '../controllers/useProjects';
 import { ProjectFormModal } from '../components/modals/ProjectFormModal';

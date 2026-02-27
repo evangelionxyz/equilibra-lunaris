@@ -143,3 +143,20 @@ export interface Alert {
   is_resolved: boolean;
   created_at?: string;
 }
+
+export interface ExtractedTask {
+  title: string;
+  description?: string;
+  reason?: string;
+  priority?: string;
+  type?: string;
+  weight?: number;
+}
+
+export interface ExtractedTaskPayload {
+  title: string;
+  description?: string;
+  type?: string;
+  weight?: number;
+  assignee_id: number;
+}
