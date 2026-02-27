@@ -1,26 +1,52 @@
-import React from 'react';
-import './LoadingScreen.css';
-
-interface LoadingScreenProps {
-  message?: string;
-  subtext?: string;
-  fullscreen?: boolean;
+.cmd-loading-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cmd-app-bg);
+  color: var(--cmd-text-body);
 }
 
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({
-  message = 'Loading…',
-  subtext,
-  fullscreen = true,
-}) => {
-  const containerStyle = fullscreen ? undefined : { minHeight: '100%' };
+.cmd-loading-shell {
+  width: min(440px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--cmd-border);
+  border-radius: 0.9rem;
+  background: linear-gradient(160deg, rgba(33, 38, 45, 0.95), rgba(22, 27, 34, 0.95));
+}
 
-  return (
-    <div className="cmd-loading-screen" style={containerStyle}>
-      <div className="cmd-loading-shell">
-        <div className="cmd-loading-ring" role="status" aria-label="Loading" />
-        <p className="cmd-loading-message">{message}</p>
-        {subtext ? <p className="cmd-loading-subtext">{subtext}</p> : null}
-      </div>
-    </div>
-  );
-};
+.cmd-loading-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(47, 129, 247, 0.25);
+  border-top-color: var(--cmd-primary);
+  animation: cmd-ring-spin 0.9s linear infinite;
+}
+
+.cmd-loading-message {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cmd-text-h1);
+  text-align: center;
+}
+
+.cmd-loading-subtext {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--cmd-text-meta);
+  text-align: center;
+}
+
+@keyframes cmd-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+  
+}
