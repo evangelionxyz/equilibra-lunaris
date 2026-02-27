@@ -40,7 +40,7 @@ function AppShell() {
         {currentPage === "project" && (
           <ProjectDetailsPage projectId={selectedProjectId!} />
         )}
-        {currentPage === "notifications" && <NotificationsPage />}
+        {currentPage === "notifications" && <NotificationsPage setPage={setCurrentPage} setProject={setSelectedProjectId} />}
       </main>
     </div>
   );
