@@ -3,27 +3,52 @@ import json
 import secrets
 import re
 import fastapi
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, BackgroundTasks, Depends
 import httpx
 from google import genai
 from google.genai import types
+from supabase import create_client, Client
+
 from config import settings
+from routers.auth import get_current_user
 
 router = APIRouter(tags=["Meetings"])
 
+supabase: Client = create_client(settings.supabase_url, settings.supabase_key)
+TEMP_ANALYSIS_RESULTS = {} # Temporary in-memory storage for results
+
 # ==========================================
-# MOCK DATABASE (Tiruan agar tidak error DB)
+# FUNGSI DATABASE SUPABASE
 # ==========================================
-async def list_meetings_for_user(uuid: str):
-    return [{"id": "mock-123", "title": "Bypass Test Meeting"}]
+async def list_meetings_for_user(user_uuid: str):
+    try:
+        # Get from temporary in-memory storage
+        results = TEMP_ANALYSIS_RESULTS.get(user_uuid, [])
+        return results
+    except Exception as e:
+        print(f"Error mengambil data dari Supabase: {e}")
+        raise HTTPException(status_code=500, detail="Gagal mengambil data dari database.")
 
 async def create_meeting_for_user(user_uuid: str, title: str, mom_content: str):
-    return {"id": f"mock-meeting-{secrets.token_hex(4)}", "title": title}
+    try:
+        data = {
+            "user_uuid": user_uuid,
+            "title": title,
+            "mom_content": mom_content
+        }
+        
+        response = supabase.table("meetings").insert(data).execute()
+        if response.data:
+            return response.data[0]
+        else:
+            raise Exception("Response data kosong")
+    except Exception as e:
+        print(f"Error menyimpan ke Supabase: {e}")
+        raise Exception(f"Gagal menyimpan ke Supabase: {e}")
 
 # ==========================================
-# KONFIGURASI BYPASS
+# KONFIGURASI AI
 # ==========================================
-MOCK_USER_UUID = "test-user-bypass-12345" 
 MODEL_ID = "gemini-2.5-flash"
 client = genai.Client(api_key=settings.gemini_api_key)
 
@@ -31,7 +56,7 @@ GEMINI_SYSTEM_PROMPT = """
 Role: Expert Project Manager dan AI Transcriber.
 Task: Analisis data meeting untuk membuat Minutes of Meeting (MOM) dan Action Items (Task).
 Output: WAJIB JSON valid tanpa teks tambahan.
-Language: Bahasa Indonesia.
+Language: Bahasa Inggris.
 
 Schema JSON:
 {
@@ -51,6 +76,7 @@ Schema JSON:
     }
   ]
 }
+IMPORTANT: Ensure the JSON is valid and all fields match the schema. Do not include markdown code blocks in the output.
 """
 
 FALLBACK_DATA = {
@@ -90,22 +116,44 @@ def _build_proposed_tasks(action_items: list[dict] | None) -> list[dict]:
 
 def _extract_json_object(raw_text: str) -> dict:
     cleaned_text = raw_text.strip()
+    # Remove markdown code fences if present
     fenced_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned_text, re.DOTALL)
     if fenced_match:
         cleaned_text = fenced_match.group(1).strip()
+    
+    # Try direct parse
     try:
         return json.loads(cleaned_text)
     except json.JSONDecodeError:
+        # Try to find the first { and last }
         start = cleaned_text.find("{")
         end = cleaned_text.rfind("}")
-        if start == -1 or end == -1 or end <= start:
-            raise
-        return json.loads(cleaned_text[start:end + 1])
+        if start != -1 and end != -1 and end > start:
+            inner_text = cleaned_text[start:end + 1]
+            try:
+                return json.loads(inner_text)
+            except json.JSONDecodeError as e:
+                # If it's still failing, try common fixes for Gemini output
+                # 1. Missing commas before new fields "field": -> ,"field":
+                repaired = re.sub(r'([^\s,\[\{\:])\s*\n\s*\"', r'\1,\n"', inner_text)
+                # 2. Trailing commas before closing braces/brackets
+                repaired = re.sub(r',\s*([\}\]])', r'\1', repaired)
+                try:
+                    return json.loads(repaired)
+                except:
+                    print(f"Failed to repair JSON. Original error: {e}")
+                    raise e
+        raise
 
 def _parse_gemini_response(response: object) -> dict:
     response_text = str(getattr(response, "text", "") or "").strip()
     if not response_text:
-        raise ValueError("Gemini response text is empty")
+        # Check if it was returned as a parts[0].text
+        try:
+            response_text = response.candidates[0].content.parts[0].text
+        except:
+            raise ValueError("Gemini response text is empty and cannot be extracted from candidates")
+    
     return _extract_json_object(response_text)
 
 def _fallback_analysis_payload(reason: str) -> dict:
@@ -118,14 +166,22 @@ def _fallback_analysis_payload(reason: str) -> dict:
     }
 
 # ==========================================
-# ENDPOINTS (TANPA LOGIN)
+# ENDPOINTS (DENGAN LOGIN GITHUB & SUPABASE)
 # ==========================================
 @router.get("/meetings")
-async def get_meetings():
-    return await list_meetings_for_user(MOCK_USER_UUID)
+async def get_meetings(current_user: dict = Depends(get_current_user)):
+    # 2. Ganti uuid dengan ID GitHub user (dijadikan string agar cocok dengan database)
+    user_uuid = str(current_user.get("id"))
+    return await list_meetings_for_user(user_uuid)
+
 
 @router.post("/analyze-meeting", tags=["AI"])
-async def analyze_meeting_endpoint(file: UploadFile = File(...)):
+async def analyze_meeting_endpoint(
+    project_id: str | None = None,
+    file: UploadFile = File(...),
+    current_user: dict = fastapi.Depends(get_current_user),
+    db_user: dict = fastapi.Depends(get_current_user)
+):
     if not file.content_type or not file.content_type.startswith(("audio/", "video/")):
         raise HTTPException(status_code=400, detail="File harus berupa audio atau video.")
 
@@ -162,66 +218,76 @@ async def analyze_meeting_endpoint(file: UploadFile = File(...)):
         mom_data = analysis_result.get("mom", {})
         title = mom_data.get("judul_meeting") or "Meeting Tanpa Judul"
         mom_content = json.dumps(mom_data)
+        meeting_id = "not-saved"
 
-        # Simpan ke Mock DB
-        meeting = await create_meeting_for_user(MOCK_USER_UUID, title, mom_content)
+        # try:
+        #     meeting = await create_meeting_for_user(
+        #         user_uuid=db_user["uuid"],
+        #         title=title,
+        #         mom_content=mom_content
+        #     )
+        # except Exception as exc:
+        #     print(f"Failed to save meeting result: {exc}")
+        #     raise HTTPException(
+        #         status_code=500,
+        #         detail="Analisis berhasil tetapi gagal menyimpan meeting."
+        #     ) from exc
+
         proposed_tasks = _build_proposed_tasks(analysis_result.get("action_items", []))
 
         return {
             "status": "success",
-            "meeting_id": meeting["id"],
+            "meeting_id": meeting_id,
             "proposed_tasks": proposed_tasks,
             "data": analysis_result
         }
+
     except Exception as e:
         print(f"Error Sistem: {str(e)}")
         raise HTTPException(status_code=500, detail="Terjadi kesalahan internal.")
     finally:
         await file.close()
 
+
+
+
+
 @router.post("/invite-bot", tags=["Recall.ai"])
-async def invite_meeting_bot(meeting_url: str):
+async def invite_meeting_bot(
+    meeting_url: str, 
+    current_user: dict = Depends(get_current_user) 
+):
+    # Gunakan ID GitHub sebagai referensi webhook
+    user_uuid = str(current_user.get("id"))
+    
     payload = {
         "meeting_url": meeting_url,
         "bot_name": "Equilibra AI Bot",
-        # Hapus dulu transcription_options untuk jaga-jaga (opsional kok ini)
-        "metadata": {"user_uuid": MOCK_USER_UUID} 
+        "metadata": {"user_uuid": user_uuid} 
     }
     
-    # Cek apakah API key terbaca (akan tampil di terminal)
     print(f"Menggunakan API Key Recall: {settings.recall_api_key[:5]}... (disensor)")
     
     headers = {
-        # Pastikan formatnya "Token <api_key>" sesuai dokumentasi Recall
         "Authorization": f"Token {settings.recall_api_key}",
         "Content-Type": "application/json"
     }
     
     async with httpx.AsyncClient() as client_http:
-        # URL KHUSUS UNTUK REGION TOKYO (ap-northeast-1)
         url = "https://ap-northeast-1.recall.ai/api/v1/bot/"
+        response = await client_http.post(url, json=payload, headers=headers)
         
-        response = await client_http.post(
-            url, 
-            json=payload, 
-            headers=headers
-        )
-        
-    # --- PERBAIKAN UNTUK DEBUGGING ---
     if response.status_code != 201:
-        error_detail = response.text # Ambil pesan error ASLI dari Recall
+        error_detail = response.text
         print(f"❌ ERROR DARI RECALL.AI: {error_detail}")
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Gagal mengundang bot. Jawaban Recall: {error_detail}"
-        )
+        raise HTTPException(status_code=400, detail=f"Gagal mengundang bot. Jawaban Recall: {error_detail}")
         
     return {"status": "bot_joining", "bot_id": response.json()["id"]}
 
 # ==========================================
 # FUNGSI PEKERJA BELAKANG LAYAR (BACKGROUND TASK)
 # ==========================================
-async def process_video_in_background(bot_id: str):
+async def process_video_in_background(bot_id: str, user_uuid: str):
     print(f"🔍 [BACKGROUND] Mengambil detail video untuk Bot ID: {bot_id}...")
     headers = {
         "Authorization": f"Token {settings.recall_api_key}",
@@ -238,10 +304,9 @@ async def process_video_in_background(bot_id: str):
                 return
             
             bot_detail = bot_res.json()
-            
-            # Ekstrak URL Video
             video_url = None
             recordings = bot_detail.get("recordings", [])
+            
             if recordings:
                 media = recordings[0].get("media_shortcuts", {})
                 video_mixed = media.get("video_mixed", {})
@@ -267,27 +332,45 @@ async def process_video_in_background(bot_id: str):
                 ],
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             ),
-            timeout=120.0 
+            timeout=180.0 
         )
         
         analysis_result = _parse_gemini_response(response)
-        
         print("✅ [BACKGROUND] ANALISIS SELESAI!")
         
-        # Simpan ke Database
-        await create_meeting_for_user(
-            user_uuid=MOCK_USER_UUID,
-            title=analysis_result["mom"]["judul_meeting"],
-            mom_content=json.dumps(analysis_result)
-        )
-        print("💾 [BACKGROUND] Data berhasil disimpan ke Database.")
+        # Prepare proposed tasks
+        proposed_tasks = _build_proposed_tasks(analysis_result.get("action_items", []))
+        
+        # Consistent payload with /analyze-meeting
+        full_payload = {
+            "status": "success",
+            "meeting_id": f"bg-{bot_id}",
+            "proposed_tasks": proposed_tasks,
+            "data": analysis_result,
+            "mom_content": json.dumps(analysis_result), # For polling compat
+            "title": analysis_result.get("mom", {}).get("judul_meeting", "Meeting Tanpa Judul")
+        }
+        
+       
+        
+        # Store in-memory for now
+        if user_uuid not in TEMP_ANALYSIS_RESULTS:
+            TEMP_ANALYSIS_RESULTS[user_uuid] = []
+        TEMP_ANALYSIS_RESULTS[user_uuid].insert(0, full_payload)
+        
+        # await create_meeting_for_user(
+        #     user_uuid=user_uuid,
+        #     title=analysis_result["mom"]["judul_meeting"],
+        #     mom_content=json.dumps(analysis_result)
+        # )
+        print("💾 [BACKGROUND] Data berhasil disimpan ke penyimpanan sementara.")
         
     except Exception as e:
         print(f"❌ [BACKGROUND] Gagal memproses: {str(e)}")
 
 
 # ==========================================
-# ENDPOINT WEBHOOK UTAMA (CEPAT TANGGAP)
+# ENDPOINT WEBHOOK UTAMA 
 # ==========================================
 @router.post("/webhooks/recall", include_in_schema=False)
 async def recall_webhook(request: Request, background_tasks: BackgroundTasks):
@@ -302,17 +385,23 @@ async def recall_webhook(request: Request, background_tasks: BackgroundTasks):
     print(f"==============================")
     
     if event_type == "bot.done":
-        bot_id = data.get("data", {}).get("bot", {}).get("id")
         
-        if not bot_id:
-            print("❌ Bot ID tidak ditemukan di webhook.")
-            return {"status": "error"}
+        bot_data = data.get("data", {})
+        if "bot" in bot_data: 
+            bot_data = bot_data["bot"]
+            
+        bot_id = bot_data.get("id")
+        
+        user_uuid = bot_data.get("metadata", {}).get("user_uuid")
+        
+        if not bot_id or not user_uuid:
+            print("❌ Bot ID atau User UUID tidak ditemukan di webhook.")
+            return {"status": "error", "message": "Missing identifiers"}
 
-        # Langsung lemparkan tugas berat ke background task
-        background_tasks.add_task(process_video_in_background, bot_id)
+        
+        background_tasks.add_task(process_video_in_background, bot_id, user_uuid)
         
         print("⚡ Merespons Recall.ai secepat kilat agar tidak timeout...")
-        # Return 200 OK ke Recall seketika itu juga!
         return {"status": "accepted", "message": "Proses AI sedang berjalan di latar belakang"}
 
     return {"status": "ignored", "event": event_type}

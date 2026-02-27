@@ -116,6 +116,9 @@ export const meetingService = {
     time: string;
     duration?: string;
     source_type?: MeetingSource;
+    mom_summary?: string;
+    key_decisions?: string[];
+    action_items?: any[];
   }): Promise<Meeting> => {
     await delay(300);
     const meeting = {

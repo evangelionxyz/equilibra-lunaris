@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Meeting } from "../models";
+import type { Meeting, MeetingSource } from "../models";
 import { meetingService } from "../services/mockService";
 
 export const useMeetings = (projectId: number) => {
@@ -31,6 +31,10 @@ export const useMeetings = (projectId: number) => {
       date: string;
       time: string;
       duration?: string;
+      source_type?: MeetingSource;
+      mom_summary?: string;
+      key_decisions?: string[];
+      action_items?: any[];
     }) => {
       const created = await meetingService.createMeeting(data);
       setMeetings((prev) => [created, ...prev]);

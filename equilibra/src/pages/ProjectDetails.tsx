@@ -4,6 +4,7 @@ import { useMeetings } from '../controllers/useMeetings';
 import { LayoutDashboard, Briefcase, Video, Settings, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { ProjectOverviewPM, ProjectOverviewDev } from '../components/dashboard/ProjectOverviews';
 import { MeetingAccordion } from '../components/dashboard/MeetingAccordion';
+import { MeetingIntelligenceTab } from '../components/dashboard/MeetingIntelligenceTab';
 import { KanbanCard } from '../components/kanban/KanbanCard';
 import { KanbanColumn } from '../components/kanban/KanbanColumn';
 import { SurfaceCard } from '../design-system/SurfaceCard';
@@ -18,17 +19,17 @@ interface ProjectDetailsProps {
 }
 
 const KANBAN_COLUMNS = [
-  { id: 'DRAFT',       name: 'DRAFT',       color: 'bg-slate-500',    desc: 'AI Output / PM Verify',  status: 'INACTIVE' },
-  { id: 'PENDING',     name: 'PENDING',     color: 'bg-[#F59E0B]',    desc: 'Needs Assignee',          status: 'INACTIVE' },
-  { id: 'TODO',        name: 'TODO',        color: 'bg-[#3B82F6]',    desc: 'Ready for Devs',          status: 'WAITING'  },
-  { id: 'ONGOING',     name: 'ONGOING',     color: 'bg-[#16A34A]',    desc: 'Active Development',      status: 'RUNNING'  },
-  { id: 'ON REVIEW',   name: 'ON REVIEW',   color: 'bg-[#8B5CF6]',    desc: 'GitHub PR Open',          status: 'PAUSED'   },
-  { id: 'COMPLETED',   name: 'COMPLETED',   color: 'bg-slate-400',    desc: 'Merged & Done',           status: 'DONE'     },
+  { id: 'DRAFT', name: 'DRAFT', color: 'bg-slate-500', desc: 'AI Output / PM Verify', status: 'INACTIVE' },
+  { id: 'PENDING', name: 'PENDING', color: 'bg-[#F59E0B]', desc: 'Needs Assignee', status: 'INACTIVE' },
+  { id: 'TODO', name: 'TODO', color: 'bg-[#3B82F6]', desc: 'Ready for Devs', status: 'WAITING' },
+  { id: 'ONGOING', name: 'ONGOING', color: 'bg-[#16A34A]', desc: 'Active Development', status: 'RUNNING' },
+  { id: 'ON REVIEW', name: 'ON REVIEW', color: 'bg-[#8B5CF6]', desc: 'GitHub PR Open', status: 'PAUSED' },
+  { id: 'COMPLETED', name: 'COMPLETED', color: 'bg-slate-400', desc: 'Merged & Done', status: 'DONE' },
 ] as const;
 
 export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId }) => {
   const [activeTab, setActiveTab] = useState('Overview');
-  const [showTaskModal, setShowTaskModal]     = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
 
@@ -37,7 +38,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   }, [projectId]);
 
   const { role, loading: roleLoading } = useCurrentUserRole(projectId);
-  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask }       = useTasks(projectId);
+  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask } = useTasks(projectId);
   const { meetings, loading: meetingsLoading, createMeeting, deleteMeeting } = useMeetings(projectId);
 
   const handleCreateTask = async (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus }) => {
@@ -74,14 +75,13 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-[12px] font-bold rounded-md transition-all flex items-center gap-2 ${
-              activeTab === tab ? 'bg-[#3B82F6] text-white' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-4 py-2 text-[12px] font-bold rounded-md transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-[#3B82F6] text-white' : 'text-slate-400 hover:text-white'
+              }`}
           >
-            {tab === 'Overview'       && <LayoutDashboard size={14} />}
-            {tab === 'Tasks'          && <Briefcase size={14} />}
+            {tab === 'Overview' && <LayoutDashboard size={14} />}
+            {tab === 'Tasks' && <Briefcase size={14} />}
             {tab === 'MoM & Meetings' && <Video size={14} />}
-            {tab === 'Settings'       && <Settings size={14} />}
+            {tab === 'Settings' && <Settings size={14} />}
             {tab}
           </button>
         ))}
@@ -91,8 +91,8 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
       <div className="flex-1 min-h-0">
         {/* Overview */}
         {activeTab === 'Overview' && (
-           roleLoading ? <div className="text-slate-500 py-10 text-center">Resolving permissions...</div> :
-           role === 'MANAGER' ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
+          roleLoading ? <div className="text-slate-500 py-10 text-center">Resolving permissions...</div> :
+            role === 'MANAGER' ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
         )}
 
         {/* Tasks — Kanban */}
@@ -158,37 +158,38 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
 
         {/* MoM & Meetings */}
         {activeTab === 'MoM & Meetings' && (
-          <SurfaceCard
-            title="Meetings & Minutes"
-            subtitle={`${meetings.length} Meetings Recorded`}
-            icon={Video}
-            rightElement={
-              <button
-                onClick={() => setShowMeetingModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#3B82F6] text-white text-[11px] font-semibold hover:bg-[#2563EB] transition-all"
-              >
-                <Plus size={12} /> Schedule Meeting
-              </button>
-            }
-          >
-            {meetingsLoading ? (
-              <div className="text-slate-500 text-[13px] text-center py-8">Loading meetings...</div>
-            ) : meetings.length === 0 ? (
-              <div className="text-slate-500 text-[13px] text-center py-12 border border-dashed border-[#374151] rounded-xl">
-                No meetings recorded. <button onClick={() => setShowMeetingModal(true)} className="text-[#3B82F6] hover:underline">Schedule one.</button>
-              </div>
-            ) : meetings.map((mtg, idx) => (
-              <div key={mtg.id} className="relative group/mtg">
-                <MeetingAccordion meeting={mtg} isDefaultExpanded={idx === 0} />
-                <button
-                  onClick={() => deleteMeeting(mtg.id)}
-                  className="absolute top-3 right-10 opacity-0 group-hover/mtg:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-          </SurfaceCard>
+          <div className="space-y-6">
+            <MeetingIntelligenceTab projectId={projectId} />
+
+            <SurfaceCard
+              title="Historical Meetings"
+              subtitle={`${meetings.length} Past Sessions`}
+              icon={Video}
+              rightElement={null}
+            >
+              {meetingsLoading ? (
+                <div className="text-slate-500 text-[13px] text-center py-8">Loading meetings...</div>
+              ) : meetings.length === 0 ? (
+                <div className="text-slate-500 text-[13px] text-center py-12 border border-dashed border-[#374151] rounded-xl">
+                  No meeting history.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {meetings.map((mtg, idx) => (
+                    <div key={mtg.id} className="relative group/mtg">
+                      <MeetingAccordion meeting={mtg} isDefaultExpanded={idx === 0} />
+                      <button
+                        onClick={() => deleteMeeting(mtg.id)}
+                        className="absolute top-3 right-10 opacity-0 group-hover/mtg:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SurfaceCard>
+          </div>
         )}
       </div>
 
