@@ -1,0 +1,96 @@
+.login-root {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: var(--cmd-app-bg);
+}
+
+.login-card {
+  background: var(--cmd-surface);
+  border: 1px solid var(--cmd-border);
+  border-radius: 1rem;
+  padding: 2.5rem 2rem;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.login-logo img {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
+}
+
+.login-logo-text {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--cmd-text-h1);
+  letter-spacing: -0.02em;
+}
+
+.login-divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--cmd-border);
+}
+
+.login-title {
+  text-align: center;
+  margin: 0;
+}
+
+.login-title h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--cmd-text-h1);
+  margin: 0 0 0.4rem;
+}
+
+.login-title p {
+  font-size: 0.92rem;
+  color: var(--cmd-text-meta);
+  margin: 0;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  background: var(--cmd-primary);
+  color: var(--cmd-text-h1);
+  border: 1px solid var(--cmd-primary);
+  border-radius: 0.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.login-btn:hover {
+  opacity: 0.9;
+}
+
+.login-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.login-footer {
+  font-size: 0.82rem;
+  color: var(--cmd-text-meta);
+  text-align: center;
+  margin: 0;
+}
