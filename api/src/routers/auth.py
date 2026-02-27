@@ -2,13 +2,13 @@ import secrets
 from urllib.parse import urlencode
 
 import httpx
-import fastapi
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from config import settings
+from database import DatabaseUser
 # from database import get_or_create_user
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -21,15 +21,6 @@ _pending_oauth_states: set[str] = set()
 _bearer = HTTPBearer(auto_error=False)
 
 AUTH_COOKIE = "gh_token"
-
-class DatabaseUser(BaseModel):
-    uuid: str
-    email: str
-    username: str
-    projectIds: list[str] = Field(default_factory=list)
-    notifIds: list[str] = Field(default_factory=list)
-    lastLoginDate: str | None = None
-    is_new: bool
 
 class AuthMeResponse(BaseModel):
     id: int | None = None
@@ -91,8 +82,8 @@ def auth_login():
     state = secrets.token_urlsafe(32)
     _pending_oauth_states.add(state)
     qs = urlencode({
-        "client_id": settings.gh_app_client_id if hasattr(settings, 'gh_app_client_id') else settings.github_app_client_id,
-        "redirect_uri": settings.gh_oauth_redirect_uri if hasattr(settings, 'gh_oauth_redirect_uri') else settings.github_oauth_redirect_uri,
+        "client_id": settings.gh_app_client_id,
+        "redirect_uri": settings.gh_oauth_redirect_uri,
         "state": state,
     })
     return RedirectResponse(f"https://github.com/login/oauth/authorize?{qs}")
@@ -108,9 +99,9 @@ async def auth_callback(code: str, state: str):
         raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
     _pending_oauth_states.discard(state)
 
-    client_id = settings.gh_app_client_id if hasattr(settings, 'gh_app_client_id') else settings.github_app_client_id
-    client_secret = settings.gh_app_client_secret if hasattr(settings, 'gh_app_client_secret') else settings.github_app_client_secret
-    redirect_uri = settings.gh_oauth_redirect_uri if hasattr(settings, 'gh_oauth_redirect_uri') else settings.github_oauth_redirect_uri
+    client_id = settings.gh_app_client_id
+    client_secret = settings.gh_app_client_secret
+    redirect_uri = settings.gh_oauth_redirect_uri
 
 
     # Exchange authorization code for access token
