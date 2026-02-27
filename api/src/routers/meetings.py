@@ -56,7 +56,7 @@ GEMINI_SYSTEM_PROMPT = """
 Role: Expert Project Manager dan AI Transcriber.
 Task: Analisis data meeting untuk membuat Minutes of Meeting (MOM) dan Action Items (Task).
 Output: WAJIB JSON valid tanpa teks tambahan.
-Language: Bahasa Indonesia.
+Language: Bahasa Inggris.
 
 Schema JSON:
 {
@@ -76,6 +76,7 @@ Schema JSON:
     }
   ]
 }
+IMPORTANT: Ensure the JSON is valid and all fields match the schema. Do not include markdown code blocks in the output.
 """
 
 FALLBACK_DATA = {
@@ -115,22 +116,44 @@ def _build_proposed_tasks(action_items: list[dict] | None) -> list[dict]:
 
 def _extract_json_object(raw_text: str) -> dict:
     cleaned_text = raw_text.strip()
+    # Remove markdown code fences if present
     fenced_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned_text, re.DOTALL)
     if fenced_match:
         cleaned_text = fenced_match.group(1).strip()
+    
+    # Try direct parse
     try:
         return json.loads(cleaned_text)
     except json.JSONDecodeError:
+        # Try to find the first { and last }
         start = cleaned_text.find("{")
         end = cleaned_text.rfind("}")
-        if start == -1 or end == -1 or end <= start:
-            raise
-        return json.loads(cleaned_text[start:end + 1])
+        if start != -1 and end != -1 and end > start:
+            inner_text = cleaned_text[start:end + 1]
+            try:
+                return json.loads(inner_text)
+            except json.JSONDecodeError as e:
+                # If it's still failing, try common fixes for Gemini output
+                # 1. Missing commas before new fields "field": -> ,"field":
+                repaired = re.sub(r'([^\s,\[\{\:])\s*\n\s*\"', r'\1,\n"', inner_text)
+                # 2. Trailing commas before closing braces/brackets
+                repaired = re.sub(r',\s*([\}\]])', r'\1', repaired)
+                try:
+                    return json.loads(repaired)
+                except:
+                    print(f"Failed to repair JSON. Original error: {e}")
+                    raise e
+        raise
 
 def _parse_gemini_response(response: object) -> dict:
     response_text = str(getattr(response, "text", "") or "").strip()
     if not response_text:
-        raise ValueError("Gemini response text is empty")
+        # Check if it was returned as a parts[0].text
+        try:
+            response_text = response.candidates[0].content.parts[0].text
+        except:
+            raise ValueError("Gemini response text is empty and cannot be extracted from candidates")
+    
     return _extract_json_object(response_text)
 
 def _fallback_analysis_payload(reason: str) -> dict:

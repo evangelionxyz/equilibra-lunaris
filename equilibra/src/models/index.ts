@@ -1,0 +1,127 @@
+export type Role = "MANAGER" | "PROGRAMMER" | "DESIGNER";
+export type MeetingSource = "RECALL_BOT" | "MANUAL_UPLOAD" | "MANUAL";
+export type MeetingStatus = "SCHEDULED" | "PROCESSING" | "COMPLETED" | "FAILED";
+export type TaskStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "TODO"
+  | "ONGOING"
+  | "ON REVIEW"
+  | "COMPLETED";
+export type TaskType = "CODE" | "REQUIREMENT" | "DESIGN" | "OTHER" | "NON-CODE";
+export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
+
+export interface User {
+  id: number;
+  github_id: number;
+  github_username: string;
+  username?: string;
+}
+
+export interface UserAlias {
+  user_id: number;
+  alias: string;
+}
+
+export interface Project {
+  id: number;
+  name: string;
+  github_repo_url: string;
+  status?: string;
+  progress?: number;
+  issue?: string;
+  tags?: string[];
+  isLead?: boolean;
+  tasksPending?: number;
+}
+
+export interface ProjectMember {
+  user_id: number;
+  project_id: number;
+  role: Role;
+  kpi_score: number; // VISIBLE TIER
+  max_capacity: number;
+  current_load: number; // For workload distribution chart
+}
+
+export interface Activity {
+  id: number;
+  project_id: number;
+  user_name: string;
+  action: string; // e.g., 'pushed', 'moved', 'generated'
+  target: string; // e.g., 'auth-v2', 'Task A to QA'
+  created_at: string;
+}
+
+export interface ProjectMetric {
+  id: number;
+  project_id: number;
+  label: string; // e.g., 'Code Review Cycle'
+  value: string; // e.g., '48h'
+  progress: number; // 0-100
+  status: "critical" | "warning" | "success" | "default";
+  target_label: string; // e.g., 'Target < 12h'
+}
+
+export interface UserProjectStats {
+  user_id: number;
+  project_id: number;
+  points_completed: number;
+  velocity_percentile: number;
+}
+
+export interface Meeting {
+  id: number;
+  project_id: number;
+  source_type: MeetingSource;
+  source_reference?: string;
+  status?: MeetingStatus;
+  meeting_link?: string;
+  scheduled_at?: string;
+  recorded_at?: string;
+  mom_summary?: string; // LAZY LOAD TIER
+  key_decisions?: any; // LAZY LOAD TIER
+  title?: string;
+  date?: string;
+  time?: string;
+  duration?: string;
+  attendees?: string[];
+  action_items?: any[];
+}
+
+export interface Task {
+  id: number;
+  project_id: number;
+  meeting_id?: number;
+  parent_task_id?: number;
+  lead_assignee_id?: number; // VISIBLE TIER
+  suggested_assignee_id?: number;
+  title: string;
+  description?: string; // LAZY LOAD TIER
+  status: TaskStatus; // VISIBLE TIER
+  type: TaskType;
+  weight: number; // VISIBLE TIER
+  branch_name?: string;
+  last_activity_at?: Date | string; // VISIBLE TIER
+  warnStagnant?: boolean;
+  isSuggested?: boolean;
+  prUrl?: string;
+}
+
+export interface TaskAssignee {
+  task_id: number;
+  user_id: number;
+}
+
+export interface Alert {
+  id: number;
+  user_id: number;
+  project_id: number;
+  title: string;
+  description: string;
+  type: AlertType;
+  severity: "critical" | "warning" | "info";
+  suggested_actions: string[];
+  is_resolved: boolean;
+  created_at: string;
+}
