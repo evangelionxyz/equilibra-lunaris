@@ -1,0 +1,65 @@
+name: Docker Build
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "frontend/**"
+      - "api/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "api/**"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Lint and Build Frontend
+    runs-on: ubuntu-latest
+    env:
+      GH_APP_ID: ${{ secrets.GH_APP_ID }}
+      GH_APP_CLIENT_ID: ${{ secrets.GH_APP_CLIENT_ID }}
+      GH_APP_CLIENT_SECRET: ${{ secrets.GH_APP_CLIENT_SECRET }}
+      GH_WEBHOOK_SECRET: ${{ secrets.GH_WEBHOOK_SECRET }}
+      GH_APP_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      POSTGRESQL_RDMS: ${{ secrets.POSTGRESQL_RDMS }}
+      POSTGRESQL_HOST: ${{ secrets.POSTGRESQL_HOST }}
+      POSTGRESQL_PORT: ${{ secrets.POSTGRESQL_PORT }}
+      POSTGRESQL_USERNAME: ${{ secrets.POSTGRESQL_USERNAME }}
+      POSTGRESQL_PASSWORD: ${{ secrets.POSTGRESQL_PASSWORD }}
+      POSTGRESQL_DATABASE: ${{ secrets.POSTGRESQL_DATABASE }}
+      GH_OAUTH_REDIRECT_URI: ${{ vars.GH_OAUTH_REDIRECT_URI }}
+      DOCKERHUB_REPOSITORY: ${{ vars.DOCKERHUB_REPOSITORY || 'evangelionz/equilibra-lunaris' }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
