@@ -8,13 +8,14 @@ export const useActivities = (projectId: number) => {
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    activityService.getActivitiesByProject(projectId).then((data) => {
+    (async () => {
+      setLoading(true);
+      const data = await activityService.getActivitiesByProject(projectId);
       if (isMounted) {
         setActivities(data);
         setLoading(false);
       }
-    });
+    })();
     return () => {
       isMounted = false;
     };
