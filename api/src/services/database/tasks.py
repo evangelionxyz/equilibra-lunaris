@@ -9,18 +9,23 @@ from services.database.database import _get_conn
 from services.database.database import _put_conn
 from services.database.database import router as db_router
 
-class DatabaseBucket(BaseModel):
+class DatabaseTask(BaseModel):
     id: Optional[int] = None
-    project_id: Optional[int] = None
-    state: Optional[str] = ""
+    bucket_id: Optional[int] = None
+    parent_task: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assign_ids: Optional[list[int]] = None
+    is_completed: Optional[bool] = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    project_id: Optional[int] = None
     order_idx: Optional[int] = None
     is_deleted: Optional[bool] = False
 
 
-@db_router.post("/buckets")
-def db_create_bucket(bucket: DatabaseBucket):
+@db_router.post("/tasks")
+def db_create_task(task: DatabaseTask):
     conn = _get_conn()
     cur = None
     try:
@@ -28,11 +33,15 @@ def db_create_bucket(bucket: DatabaseBucket):
 
         # fetch to the last idx
         mapping = {
-            "project_id": bucket.project_id,
-            "state": bucket.state if bucket.state is not None else "",
-            "created_at": bucket.created_at,
-            "order_idx": bucket.order_idx if bucket.order_idx is not None else 0,
-            "is_deleted": bucket.is_deleted if bucket.is_deleted is not None else False,
+            "project_id": task.project_id,
+            "bucket_id": task.bucket_id,
+            "parent_task_id": task.parent_task,
+            "title": task.title,
+            "description": task.description,
+            "assign_ids": task.assign_ids,
+            "order_idx": task.order_idx if task.order_idx is not None else 0,
+            "is_completed": task.is_completed if task.is_completed is not None else False,
+            "is_deleted": task.is_deleted if task.is_deleted is not None else False,
         }
 
         columns = []
@@ -49,7 +58,7 @@ def db_create_bucket(bucket: DatabaseBucket):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.buckets ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, state, created_at, updated_at, order_idx, is_deleted;"
+        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, bucket_id, parent_task, title, description, assign_ids, is_completed, created_at, updated_at, project_id, order_idx, is_deleted;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -68,16 +77,13 @@ def db_create_bucket(bucket: DatabaseBucket):
 
 
 
-@db_router.get("/projects/{project_id}/buckets")
-def db_get_buckets(project_id: int):
+@db_router.get("/tasks")
+def db_get_tasks():
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx, is_deleted FROM public.buckets WHERE project_id = %s;",
-            (project_id,)
-        )
+        cur.execute("SELECT * FROM public.tasks;")
         rows = cur.fetchall()
         return rows
     finally:
@@ -86,19 +92,19 @@ def db_get_buckets(project_id: int):
         _put_conn(conn)
 
 
-@db_router.get("/projects/{project_id}/buckets/{bucket_id}")
-def db_get_bucket_by_id(project_id: int, bucket_id: int):
+@db_router.get("/tasks/{task_id}")
+def db_get_task_by_id(task_id: int):
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx, is_deleted FROM public.buckets WHERE id = %s AND project_id = %s LIMIT 1;",
-            (bucket_id, project_id),
+            "SELECT id, bucket_id, parent_task_id, title, description, assign_ids, is_completed, created_at, updated_at, project_id, order_idx, is_deleted FROM public.tasks WHERE id = %s LIMIT 1;",
+            (task_id,),
         )
         row = cur.fetchone()
         if row is None:
-            raise HTTPException(status_code=404, detail="Bucket not found")
+            raise HTTPException(status_code=404, detail="Project not found")
         return row
     finally:
         if cur is not None:
