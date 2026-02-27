@@ -1,6 +1,6 @@
 import { LoadingScreen } from './components/ui/LoadingScreen'
 import { LoginPage } from './auth/LoginPage'
-import { useAuth } from './auth/authContext';
+import { useAuth } from './auth/useAuth';
 import './App.css'
 
 function App() {
