@@ -30,7 +30,7 @@ export async function fetchCurrentUser(): Promise<GitHubUser | null> {
     try {
         const payload = await resp.json()
         return payload as GitHubUser
-    } catch (err) {
+    } catch {
         throw new Error("Failed to parse /auth/me response")
     }
 }
