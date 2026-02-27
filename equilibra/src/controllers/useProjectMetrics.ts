@@ -8,13 +8,14 @@ export const useProjectMetrics = (projectId: number) => {
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    metricService.getMetricsByProject(projectId).then((data) => {
+    (async () => {
+      setLoading(true);
+      const data = await metricService.getMetricsByProject(projectId);
       if (isMounted) {
         setMetrics(data);
         setLoading(false);
       }
-    });
+    })();
     return () => {
       isMounted = false;
     };

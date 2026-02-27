@@ -68,7 +68,7 @@ export const MeetingAccordion: React.FC<MeetingProps> = ({ meeting, isDefaultExp
                <section>
                   <h6 className="text-[#22C55E] text-[10px] font-bold uppercase tracking-widest mb-3">Decisions Made</h6>
                   <div className="space-y-2">
-                     {meeting.key_decisions?.map((d: any, i: number) => (
+                     {meeting.key_decisions?.map((d: string, i: number) => (
                        <div key={i} className="flex items-center gap-3 text-[13px] text-slate-300">
                          <CheckCircle2 className="text-[#22C55E]" size={16} /> {d}
                        </div>
@@ -79,7 +79,7 @@ export const MeetingAccordion: React.FC<MeetingProps> = ({ meeting, isDefaultExp
                <section>
                   <h6 className="text-[#F59E0B] text-[10px] font-bold uppercase tracking-widest mb-3">Action Items</h6>
                   <div className="space-y-3">
-                     {meeting.action_items?.map((act: any, i: number) => (
+                     {meeting.action_items?.map((act, i: number) => (
                        <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-[#1F2937] border border-[#374151]">
                           <div className="flex items-center gap-3">
                              <div className="w-6 h-6 rounded bg-[#F59E0B] text-white flex items-center justify-center text-[10px] font-bold">{act.initials}</div>

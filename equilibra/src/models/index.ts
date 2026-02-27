@@ -80,13 +80,13 @@ export interface Meeting {
   scheduled_at?: string;
   recorded_at?: string;
   mom_summary?: string; // LAZY LOAD TIER
-  key_decisions?: any; // LAZY LOAD TIER
+  key_decisions?: string[]; // LAZY LOAD TIER
   title?: string;
   date?: string;
   time?: string;
   duration?: string;
   attendees?: string[];
-  action_items?: any[];
+  action_items?: { initials: string; task: string; deadline: string }[];
 }
 
 export interface Task {

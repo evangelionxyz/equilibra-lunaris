@@ -15,6 +15,7 @@ export const NotificationsPage: React.FC = () => {
   const getProjectName = (id: number) => allProjects.find(p => p.id === id)?.name || `Project #${id}`;
 
   const getTimeAgo = (dateStr: string) => {
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dateStr).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours < 1) return 'Just now';

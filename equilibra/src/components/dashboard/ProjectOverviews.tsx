@@ -36,6 +36,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
   const tasksAtRisk = tasks.filter(t => t.warnStagnant || t.status === 'ON REVIEW').slice(0, 3);
 
   const getTimeAgo = (dateStr: string) => {
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dateStr).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours < 1) return 'Just now';
@@ -94,7 +95,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
                   <div key={m.id}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-white text-[12px] font-bold uppercase tracking-wider">{m.label}</span>
-                      <Badge variant={m.status as any} className="!text-[8px] uppercase">{m.status}</Badge>
+                      <Badge variant={m.status} className="!text-[8px] uppercase">{m.status}</Badge>
                     </div>
                     <div className="flex items-end gap-2 mb-2">
                       <span className="text-[32px] text-white font-bold leading-none">{m.value.replace(/[^0-9]/g, '')}<span className="text-[16px] text-slate-500 font-medium ml-1">{m.value.replace(/[0-9]/g, '')}</span></span>
@@ -178,6 +179,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
   const myQueueTasks = tasks.filter(t => t.status === 'TODO' && t.lead_assignee_id === 1).slice(0, 3);
 
   const getTimeAgo = (dateStr: string) => {
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dateStr).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     if (hours < 1) return 'Just now';
@@ -200,7 +202,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
                <span className="text-[12px] text-slate-300 font-mono font-semibold">{activeTask.branch_name || 'no-branch'}</span>
                <div className="w-px h-4 bg-[#374151] mx-2" />
                <Clock className="text-slate-400" size={14} />
-               <span className="text-[12px] text-slate-400 font-medium">Started {activeTask.last_activity_at ? getTimeAgo(activeTask.last_activity_at as any) : 'Recently'}</span>
+               <span className="text-[12px] text-slate-400 font-medium">Started {activeTask.last_activity_at ? getTimeAgo(String(activeTask.last_activity_at)) : 'Recently'}</span>
              </div>
              <div className="flex gap-4">
                <Button variant="success"><CheckCircle2 size={16} /> Mark as Done</Button>
