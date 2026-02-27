@@ -40,7 +40,7 @@ class AuthMeResponse(BaseModel):
     html_url: str | None = None
     public_repos: int | None = None
     followers: int | None = None
-    db_user: DatabaseUser
+    db_user: DatabaseUser | None = None
 
 async def get_current_user(
     request: Request,
