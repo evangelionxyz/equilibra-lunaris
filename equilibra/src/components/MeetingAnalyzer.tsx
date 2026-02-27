@@ -97,6 +97,7 @@ export const MeetingAnalyzer: React.FC = () => {
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('project_id', '0'); // Fallback project_id
 
         try {
             const response = await fetch('/api/analyze-meeting', {
@@ -142,7 +143,7 @@ export const MeetingAnalyzer: React.FC = () => {
             const count = await fetchMeetingCount();
             setLastMeetingCount(count);
 
-            const response = await fetch(`/api/invite-bot?meeting_url=${encodeURIComponent(meetingUrl)}`, {
+            const response = await fetch(`/api/invite-bot?meeting_url=${encodeURIComponent(meetingUrl)}&project_id=0`, {
                 method: 'POST',
                 credentials: 'include'
             });

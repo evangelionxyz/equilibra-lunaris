@@ -1,8 +1,17 @@
 import type { Activity } from "../models";
+import { apiFetch } from "./apiClient";
 
 export const activityService = {
-  getActivitiesByProject: async (_projectId: number | string): Promise<Activity[]> => {
-    // Placeholder returning empty for now
-    return [];
+  getActivitiesByProject: async (projectId: number): Promise<Activity[]> => {
+    return await apiFetch<Activity[]>(`/projects/${projectId}/activities`);
+  },
+
+  createActivity: async (
+    data: Omit<Activity, "id" | "created_at">,
+  ): Promise<Activity> => {
+    return await apiFetch<Activity>("/activities", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   },
 };

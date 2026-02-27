@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { UserProjectStats } from "../models";
 import { statsService } from "../services/statsService";
 
-export const useUserProjectStats = (projectId: number | string, userId: number = 1) => {
+export const useUserProjectStats = (projectId: number, userId: number = 1) => {
   const [stats, setStats] = useState<UserProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
 

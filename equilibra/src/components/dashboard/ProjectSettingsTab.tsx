@@ -9,7 +9,7 @@ import { useToast } from '../../design-system/Toast';
 import type { Project, ProjectMember, User, Bucket } from '../../models';
 
 interface ProjectSettingsTabProps {
-    projectId: number | string;
+    projectId: number;
 }
 
 export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectId }) => {

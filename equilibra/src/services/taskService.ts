@@ -3,7 +3,7 @@ import type { Task, Bucket } from "../models";
 import JSONBig from 'json-bigint';
 
 export const taskService = {
-  getTasksByProject: async (projectId: number | string): Promise<Task[]> => {
+  getTasksByProject: async (projectId: number): Promise<Task[]> => {
     const tasks = await apiFetch<Task[]>("/tasks");
     return tasks.filter((t) => String(t.project_id) === String(projectId));
   },
@@ -20,20 +20,20 @@ export const taskService = {
     });
   },
 
-  updateTask: async (id: number | string, data: Partial<Task>): Promise<Task> => {
+  updateTask: async (id: number, data: Partial<Task>): Promise<Task> => {
     return await apiFetch<Task>(`/tasks/${id}`, {
       method: "PUT",
       body: JSONBig.stringify(data),
     });
   },
 
-  deleteTask: async (id: number | string): Promise<void> => {
+  deleteTask: async (id: number): Promise<void> => {
     await apiFetch(`/tasks/${id}`, {
       method: "DELETE",
     });
   },
 
-  reorderTasks: async (projectId: number | string, bucketId: number | string, taskIds: (number | string)[]): Promise<{ status: string; order: (number | string)[]; bucket_id: number | string }> => {
+  reorderTasks: async (projectId: number, bucketId: number, taskIds: (number)[]): Promise<{ status: string; order: (number)[]; bucket_id: number }> => {
     return await apiFetch(`/projects/${projectId}/buckets/${bucketId}/tasks/reorder`, {
       method: "PUT",
       body: JSONBig.stringify(taskIds),

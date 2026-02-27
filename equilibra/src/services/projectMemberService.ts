@@ -2,16 +2,16 @@ import { apiFetch } from "./apiClient";
 import type { ProjectMember } from "../models";
 
 export const projectMemberService = {
-  getMembers: async (projectId: number | string): Promise<ProjectMember[]> => {
+  getMembers: async (projectId: number): Promise<ProjectMember[]> => {
     return await apiFetch<ProjectMember[]>(`/projects/${projectId}/members`);
   },
 
-  getMember: async (projectId: number | string, memberId: number): Promise<ProjectMember> => {
+  getMember: async (projectId: number, memberId: number): Promise<ProjectMember> => {
     return await apiFetch<ProjectMember>(`/projects/${projectId}/members/${memberId}`);
   },
 
   createMember: async (
-    projectId: number | string,
+    projectId: number,
     data: Partial<ProjectMember> & { user_id: number },
   ): Promise<ProjectMember> => {
     const res = await apiFetch<ProjectMember>(`/projects/${projectId}/members`, {

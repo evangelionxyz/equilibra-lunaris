@@ -1,4 +1,4 @@
-import JSONBig from 'json-bigint';
+import JSONBig from "json-bigint";
 
 const BASE_URL = "http://localhost:8000";
 
@@ -47,7 +47,7 @@ export async function apiFetch<T>(
 
         throw new Error(
           errorData.detail ||
-          `API Error: ${response.status} ${response.statusText}`,
+            `API Error: ${response.status} ${response.statusText}`,
         );
       }
 
