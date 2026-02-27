@@ -14,6 +14,7 @@ from services.database import users as _db_users
 from services.database import projects as _db_projects
 from services.database import buckets as _db_buckets
 from services.database import tasks as _db_tasks
+from services.database import project_member as _db_project_member
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())

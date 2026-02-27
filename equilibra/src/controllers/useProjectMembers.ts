@@ -8,13 +8,14 @@ export const useProjectMembers = (projectId: number) => {
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    memberService.getMembersByProject(projectId).then((data) => {
+    (async () => {
+      setLoading(true);
+      const data = await memberService.getMembersByProject(projectId);
       if (isMounted) {
         setMembers(data);
         setLoading(false);
       }
-    });
+    })();
     return () => {
       isMounted = false;
     };

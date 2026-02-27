@@ -8,13 +8,14 @@ export const useUserProjectStats = (projectId: number, userId: number = 1) => {
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    statService.getUserStatsByProject(userId, projectId).then((data) => {
+    (async () => {
+      setLoading(true);
+      const data = await statService.getUserStatsByProject(userId, projectId);
       if (isMounted) {
         setStats(data);
         setLoading(false);
       }
-    });
+    })();
     return () => {
       isMounted = false;
     };

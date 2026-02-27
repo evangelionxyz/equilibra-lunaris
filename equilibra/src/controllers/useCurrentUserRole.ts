@@ -8,8 +8,8 @@ export const useCurrentUserRole = (projectId: number | null) => {
 
   useEffect(() => {
     if (!projectId) {
-      setRole(null);
-      return;
+      const t = setTimeout(() => setRole(null), 0);
+      return () => clearTimeout(t);
     }
 
     const fetchRole = async () => {

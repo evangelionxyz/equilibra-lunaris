@@ -105,7 +105,7 @@ def db_get_task_by_id(task_id: int):
         )
         row = cur.fetchone()
         if row is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Task not found")
         return row
     finally:
         if cur is not None:
