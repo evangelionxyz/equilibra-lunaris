@@ -10,7 +10,7 @@ export const userService = {
     return await apiFetch<User[]>(`/users?username=${encodeURIComponent(username)}`);
   },
 
-  getProjectMembers: async (projectId: number | string): Promise<ProjectMember[]> => {
+  getProjectMembers: async (projectId: number): Promise<ProjectMember[]> => {
     const project = await apiFetch<{ members: number[] }>(
       `/projects/${projectId}`,
     );

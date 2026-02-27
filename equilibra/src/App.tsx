@@ -45,7 +45,7 @@ function ProjectDetailsPageWrapper() {
     return null;
   }
 
-  return <ProjectDetailsPage projectId={String(projectId)} />;
+  return <ProjectDetailsPage projectId={Number(projectId)} />;
 }
 
 import { ToastProvider } from './design-system/Toast';
@@ -61,3 +61,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

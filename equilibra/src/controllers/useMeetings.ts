@@ -3,7 +3,7 @@ import type { Meeting, MeetingSource } from "../models";
 import { meetingService } from "../services/meetingService";
 import { useToast } from "../design-system/Toast";
 
-export const useMeetings = (projectId: number | string) => {
+export const useMeetings = (projectId: number) => {
   const { showToast } = useToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,18 +41,7 @@ export const useMeetings = (projectId: number | string) => {
       action_items?: any[];
     }) => {
       try {
-        // Currently createMeeting in service is just for local mapping
-        // in this integration phase, but standardizing the flow.
-        const created: Meeting = {
-          id: Math.random(),
-          project_id: data.project_id,
-          title: data.title,
-          date: data.date,
-          time: data.time,
-          source_type: "MANUAL",
-          attendees: [],
-          action_items: [],
-        };
+        const created = await meetingService.createMeeting(data);
         setMeetings((prev) => [created, ...prev]);
         showToast("Meeting scheduled", "success");
         return created;

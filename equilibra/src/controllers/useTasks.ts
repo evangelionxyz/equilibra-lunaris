@@ -38,12 +38,12 @@ export const useTasks = (projectId?: number) => {
 
   const createTask = useCallback(
     async (data: {
-      project_id: string | number;
+      project_id: number;
       title: string;
       type: TaskType;
       weight: number;
       status?: TaskStatus;
-      bucket_id?: string | number;
+      bucket_id?: number;
     }) => {
       try {
         const created = await taskService.createTask(data);
@@ -60,7 +60,7 @@ export const useTasks = (projectId?: number) => {
   );
 
   const updateTask = useCallback(
-    async (id: string | number, data: Partial<Task>) => {
+    async (id: number, data: Partial<Task>) => {
       try {
         // Optimistic local update
         setTasks((prev) =>
@@ -81,7 +81,7 @@ export const useTasks = (projectId?: number) => {
     [fetchTasks],
   );
 
-  const deleteTask = useCallback(async (id: string | number) => {
+  const deleteTask = useCallback(async (id: number) => {
     try {
       // Optimistic local update
       setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
@@ -98,7 +98,7 @@ export const useTasks = (projectId?: number) => {
   }, [fetchTasks]);
 
   const reorderTasks = useCallback(
-    async (bucketId: string | number, taskIds: (string | number)[]) => {
+    async (bucketId: number, taskIds: (number)[]) => {
       try {
         if (!projectId) return;
 

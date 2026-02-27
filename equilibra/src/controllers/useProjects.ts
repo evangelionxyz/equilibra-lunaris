@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Project, ProjectMember, Role } from "../models";
+import type { Project, ProjectMember } from "../models";
 import { projectService } from "../services/projectService";
 import { userService } from "../services/userService";
 import { useToast } from "../design-system/Toast";
@@ -21,7 +21,7 @@ export const useProjects = () => {
       setLoading(true);
       const [data, mems] = await Promise.all([
         projectService.getMyProjects(),
-        userService.getMembershipsForUser(userId),
+        userService.getMembershipsForUser(),
       ]);
       setProjects(data);
       setMemberships(mems);
@@ -46,7 +46,10 @@ export const useProjects = () => {
     ) => {
       try {
         const ownerId = user?.db_user?.id;
-        const created = await projectService.createProjectWithOwner(data as Project, ownerId);
+        const created = await projectService.createProjectWithOwner(
+          data as Project,
+          ownerId,
+        );
         setProjects((prev) => [created, ...prev]);
 
         // add local membership for UI immediately
@@ -55,7 +58,7 @@ export const useProjects = () => {
           {
             project_id: created.id!,
             user_id: ownerId || 1,
-            role: "MANAGER" as Role,
+            role: "MANAGER",
             kpi_score: 100,
             max_capacity: 100,
             current_load: 0,

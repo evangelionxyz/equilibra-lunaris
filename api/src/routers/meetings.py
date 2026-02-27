@@ -2,49 +2,99 @@ import asyncio
 import json
 import secrets
 import re
+from typing import List, Optional
 import fastapi
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request, BackgroundTasks, Depends
 import httpx
+import psycopg2
+import psycopg2.extras
+from pydantic import BaseModel
 from google import genai
 from google.genai import types
-from supabase import create_client, Client
 
 from config import settings
 from routers.auth import get_current_user
+from services.database.database import _get_conn, _put_conn
+from services.database.id_generator import _generator
 
 router = APIRouter(tags=["Meetings"])
 
-supabase: Client = create_client(settings.supabase_url, settings.supabase_key)
-TEMP_ANALYSIS_RESULTS = {} # Temporary in-memory storage for results
+# ==========================================
+# ALERT HELPER
+# ==========================================
+def _create_draft_approval_alert(user_uuid: str, project_id: int, meeting_title: str) -> int:
+    """Create a DRAFT_APPROVAL alert in the DB and return its new ID."""
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor()
+        
+        # user_id in the alerts table is VARCHAR — pass the GitHub id string directly.
+        alert_id = _generator.generate()
+        title = f"Review Extracted Tasks: {meeting_title}"
+        desc = "The AI has finished extracting tasks from the meeting. Please review and confirm which ones should be added to the backlog."
+        
+        sql = """
+            INSERT INTO public.alerts 
+                (id, user_id, context_id, project_id, title, description, type, severity, is_resolved, suggested_actions) 
+            VALUES 
+                (%s, %s, %s, %s, %s, %s, 'DRAFT_APPROVAL', 'info', FALSE, ARRAY[]::TEXT[]) 
+            RETURNING id;
+        """
+        cur.execute(sql, (alert_id, str(user_uuid), project_id, project_id, title, desc))
+        conn.commit()
+        return alert_id
+    except Exception as e:
+        conn.rollback()
+        print(f"Failed to create alert: {e}")
+        # Return a fallback integer to avoid breaking the frontend totally
+        return -1
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+TEMP_ANALYSIS_RESULTS = {}  # Temporary in-memory storage for results
+
 
 # ==========================================
-# FUNGSI DATABASE SUPABASE
+# MODELS
 # ==========================================
-async def list_meetings_for_user(user_uuid: str):
+class ExtractedTaskPayload(BaseModel):
+    title: str
+    description: Optional[str] = None
+    type: Optional[str] = "OTHER"
+    weight: Optional[int] = 3
+    project_id: int
+    bucket_id: int
+
+
+class ConfirmTasksRequest(BaseModel):
+    alert_id: int
+    tasks: List[ExtractedTaskPayload]
+
+from services.database.meetings import DatabaseMeeting, db_create_meeting, db_get_meetings_by_project
+
+# ==========================================
+# FUNGSI DATABASE SUPABASE (DEPRECATED -> PostgreSQL)
+# ==========================================
+async def list_meetings_for_project(project_id: int):
     try:
-        # Get from temporary in-memory storage
-        results = TEMP_ANALYSIS_RESULTS.get(user_uuid, [])
+        results = db_get_meetings_by_project(project_id)
         return results
     except Exception as e:
-        print(f"Error mengambil data dari Supabase: {e}")
+        print(f"Error mengambil data dari Postgres: {e}")
         raise HTTPException(status_code=500, detail="Gagal mengambil data dari database.")
 
-async def create_meeting_for_user(user_uuid: str, title: str, mom_content: str):
+async def create_meeting_record(meeting: dict):
     try:
-        data = {
-            "user_uuid": user_uuid,
-            "title": title,
-            "mom_content": mom_content
-        }
-        
-        response = supabase.table("meetings").insert(data).execute()
-        if response.data:
-            return response.data[0]
-        else:
-            raise Exception("Response data kosong")
+        # Convert dictionary to DatabaseMeeting Pydantic model
+        db_meeting = DatabaseMeeting(**meeting)
+        result = db_create_meeting(db_meeting)
+        return result
     except Exception as e:
-        print(f"Error menyimpan ke Supabase: {e}")
-        raise Exception(f"Gagal menyimpan ke Supabase: {e}")
+        print(f"Error menyimpan ke Postgres: {e}")
+        raise Exception(f"Gagal menyimpan ke Postgres: {e}")
 
 # ==========================================
 # KONFIGURASI AI
@@ -168,22 +218,41 @@ def _fallback_analysis_payload(reason: str) -> dict:
 # ==========================================
 # ENDPOINTS (DENGAN LOGIN GITHUB & SUPABASE)
 # ==========================================
-@router.get("/meetings")
-async def get_meetings(current_user: dict = Depends(get_current_user)):
-    # 2. Ganti uuid dengan ID GitHub user (dijadikan string agar cocok dengan database)
-    user_uuid = str(current_user.get("id"))
-    return await list_meetings_for_user(user_uuid)
+@router.get("/meetings/project/{project_id}")
+async def get_meetings(project_id: int, current_user: dict = Depends(get_current_user)):
+    return await list_meetings_for_project(project_id)
 
+class MeetingSyncRequest(BaseModel):
+    project_id: int
+    title: str
+    date: str
+    time: str
+    duration: str
+    source_type: str
+    mom_summary: str
+    key_decisions: List[str]
+    action_items: List[dict]
+
+@router.post("/meetings")
+async def create_meeting(request: MeetingSyncRequest, current_user: dict = Depends(get_current_user)):
+    try:
+        meeting_data = request.model_dump()
+        meeting_data["user_uuid"] = str(current_user.get("id"))
+        return await create_meeting_record(meeting_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/analyze-meeting", tags=["AI"])
 async def analyze_meeting_endpoint(
-    project_id: str | None = None,
+    project_id: int = fastapi.Form(...),
     file: UploadFile = File(...),
-    current_user: dict = fastapi.Depends(get_current_user),
-    db_user: dict = fastapi.Depends(get_current_user)
+    current_user: dict = fastapi.Depends(get_current_user)
 ):
     if not file.content_type or not file.content_type.startswith(("audio/", "video/")):
         raise HTTPException(status_code=400, detail="File harus berupa audio atau video.")
+    
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id form field is required.")
 
     try:
         input_bytes = await file.read()
@@ -217,27 +286,49 @@ async def analyze_meeting_endpoint(
 
         mom_data = analysis_result.get("mom", {})
         title = mom_data.get("judul_meeting") or "Meeting Tanpa Judul"
-        mom_content = json.dumps(mom_data)
-        meeting_id = "not-saved"
-
-        # try:
-        #     meeting = await create_meeting_for_user(
-        #         user_uuid=db_user["uuid"],
-        #         title=title,
-        #         mom_content=mom_content
-        #     )
-        # except Exception as exc:
-        #     print(f"Failed to save meeting result: {exc}")
-        #     raise HTTPException(
-        #         status_code=500,
-        #         detail="Analisis berhasil tetapi gagal menyimpan meeting."
-        #     ) from exc
-
         proposed_tasks = _build_proposed_tasks(analysis_result.get("action_items", []))
+        
+        from datetime import datetime
+        # 1. Automate persistence: Save to DB immediately
+        meeting_data = {
+            "project_id": project_id,
+            "user_uuid": str(current_user.get("id")),
+            "title": title,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "time": datetime.now().strftime("%H:%M"),
+            "duration": "N/A",
+            "source_type": "MANUAL_UPLOAD",
+            "mom_summary": "\n".join(mom_data.get("poin_diskusi", [])),
+            "key_decisions": mom_data.get("keputusan_final", []),
+            "action_items": [
+                {
+                    "task": t["title"],
+                    "initials": "".join([n[0] for n in (t.get("assignee_username") or "??").split()]).upper()[:2],
+                    "deadline": t.get("due_date") or "TBD"
+                } for t in proposed_tasks
+            ]
+        }
+        
+        db_meeting = None
+        try:
+            db_meeting = await create_meeting_record(meeting_data)
+            meeting_id = db_meeting.get("id") if db_meeting else "not-saved"
+        except Exception as db_err:
+            print(f"Auto-save failed: {db_err}")
+            meeting_id = "not-saved"
+
+        # 2. Generasikan Alert ONLY after attempting to save
+        alert_id = _create_draft_approval_alert(
+            user_uuid=str(current_user.get("id")), 
+            project_id=project_id, 
+            meeting_title=title
+        )
 
         return {
             "status": "success",
             "meeting_id": meeting_id,
+            "meeting": db_meeting, # Return the whole record for frontend history update
+            "alert_id": alert_id,
             "proposed_tasks": proposed_tasks,
             "data": analysis_result
         }
@@ -255,6 +346,7 @@ async def analyze_meeting_endpoint(
 @router.post("/invite-bot", tags=["Recall.ai"])
 async def invite_meeting_bot(
     meeting_url: str, 
+    project_id: int,
     current_user: dict = Depends(get_current_user) 
 ):
     # Gunakan ID GitHub sebagai referensi webhook
@@ -263,7 +355,10 @@ async def invite_meeting_bot(
     payload = {
         "meeting_url": meeting_url,
         "bot_name": "Equilibra AI Bot",
-        "metadata": {"user_uuid": user_uuid} 
+        "metadata": {
+            "user_uuid": user_uuid,
+            "project_id": project_id
+        } 
     }
     
     print(f"Menggunakan API Key Recall: {settings.recall_api_key[:5]}... (disensor)")
@@ -287,7 +382,7 @@ async def invite_meeting_bot(
 # ==========================================
 # FUNGSI PEKERJA BELAKANG LAYAR (BACKGROUND TASK)
 # ==========================================
-async def process_video_in_background(bot_id: str, user_uuid: str):
+async def process_video_in_background(bot_id: str, user_uuid: str, project_id: int):
     print(f"🔍 [BACKGROUND] Mengambil detail video untuk Bot ID: {bot_id}...")
     headers = {
         "Authorization": f"Token {settings.recall_api_key}",
@@ -341,14 +436,23 @@ async def process_video_in_background(bot_id: str, user_uuid: str):
         # Prepare proposed tasks
         proposed_tasks = _build_proposed_tasks(analysis_result.get("action_items", []))
         
+        # Generasikan Alert
+        meeting_title = analysis_result.get("mom", {}).get("judul_meeting", "Meeting Tanpa Judul")
+        alert_id = _create_draft_approval_alert(
+            user_uuid=user_uuid, 
+            project_id=project_id, 
+            meeting_title=meeting_title
+        )
+        
         # Consistent payload with /analyze-meeting
         full_payload = {
             "status": "success",
             "meeting_id": f"bg-{bot_id}",
+            "alert_id": alert_id,
             "proposed_tasks": proposed_tasks,
             "data": analysis_result,
             "mom_content": json.dumps(analysis_result), # For polling compat
-            "title": analysis_result.get("mom", {}).get("judul_meeting", "Meeting Tanpa Judul")
+            "title": meeting_title
         }
         
        
@@ -358,12 +462,22 @@ async def process_video_in_background(bot_id: str, user_uuid: str):
             TEMP_ANALYSIS_RESULTS[user_uuid] = []
         TEMP_ANALYSIS_RESULTS[user_uuid].insert(0, full_payload)
         
-        # await create_meeting_for_user(
-        #     user_uuid=user_uuid,
-        #     title=analysis_result["mom"]["judul_meeting"],
-        #     mom_content=json.dumps(analysis_result)
-        # )
-        print("💾 [BACKGROUND] Data berhasil disimpan ke penyimpanan sementara.")
+        print("💾 [BACKGROUND] Menyiapkan payload untuk DB Postgres...")
+        
+        # Save directly to the DB now!
+        await create_meeting_record({
+             "project_id": project_id,
+             "user_uuid": user_uuid,
+             "title": meeting_title,
+             "date": "TBD",
+             "time": "TBD",
+             "duration": "TBD",
+             "source_type": "RECALL_BOT",
+             "mom_summary": "\n".join(analysis_result.get("mom", {}).get("poin_diskusi", [])),
+             "key_decisions": analysis_result.get("mom", {}).get("keputusan_final", []),
+             "action_items": analysis_result.get("action_items", [])
+        })
+        print("💾 [BACKGROUND] Data berhasil disimpan ke Postgres.")
         
     except Exception as e:
         print(f"❌ [BACKGROUND] Gagal memproses: {str(e)}")
@@ -393,15 +507,98 @@ async def recall_webhook(request: Request, background_tasks: BackgroundTasks):
         bot_id = bot_data.get("id")
         
         user_uuid = bot_data.get("metadata", {}).get("user_uuid")
+        project_id = bot_data.get("metadata", {}).get("project_id", 0)
         
         if not bot_id or not user_uuid:
             print("❌ Bot ID atau User UUID tidak ditemukan di webhook.")
             return {"status": "error", "message": "Missing identifiers"}
 
-        
-        background_tasks.add_task(process_video_in_background, bot_id, user_uuid)
+        background_tasks.add_task(process_video_in_background, bot_id, user_uuid, project_id)
         
         print("⚡ Merespons Recall.ai secepat kilat agar tidak timeout...")
         return {"status": "accepted", "message": "Proses AI sedang berjalan di latar belakang"}
 
     return {"status": "ignored", "event": event_type}
+
+
+# ==========================================
+# CONFIRM TASKS (Human-in-the-Loop)
+# ==========================================
+@router.post("/meetings/confirm-tasks")
+def confirm_meeting_tasks(
+    body: ConfirmTasksRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Batch-insert selected tasks from a meeting analysis and mark the
+    originating alert as resolved. The entire operation runs inside a
+    single transaction — if any INSERT fails the alert is NOT updated.
+    """
+    if not body.tasks:
+        raise HTTPException(status_code=400, detail="No tasks provided")
+
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # 1. Batch-insert tasks
+        for task in body.tasks:
+            task_id = _generator.generate()
+            mapping = {
+                "id": task_id,
+                "project_id": task.project_id,
+                "bucket_id": task.bucket_id,
+                "title": task.title,
+                "description": task.description,
+                "type": task.type or "OTHER",
+                "weight": task.weight if task.weight is not None else 3,
+            }
+            columns = [k for k, v in mapping.items() if v is not None]
+            placeholders = ["%s"] * len(columns)
+            params = [mapping[k] for k in columns]
+
+            sql = (
+                f"INSERT INTO public.tasks ({', '.join(columns)}) "
+                f"VALUES ({', '.join(placeholders)});"
+            )
+            cur.execute(sql, params)
+
+        # 2. Resolve the alert
+        cur.execute(
+            "UPDATE public.alerts SET is_resolved = true, updated_at = NOW() "
+            "WHERE id = %s;",
+            (body.alert_id,),
+        )
+
+        conn.commit()
+        return {"status": "success", "inserted": len(body.tasks)}
+
+    except psycopg2.errors.ForeignKeyViolation as e:
+        conn.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail=f"Constraint violation (foreign key): {e.pgerror or str(e)}",
+        )
+    except psycopg2.errors.UniqueViolation as e:
+        conn.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail=f"Constraint violation (unique): {e.pgerror or str(e)}",
+        )
+    except psycopg2.IntegrityError as e:
+        conn.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail=f"Integrity error: {e.pgerror or str(e)}",
+        )
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
