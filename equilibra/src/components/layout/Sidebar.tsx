@@ -3,10 +3,7 @@ import { useAuth } from '../../auth/useAuth';
 import { getDisplayName } from '../../auth/displayName';
 import logo from '../../assets/logo.png';
 
-interface SidebarProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
-}
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { id: 'dashboard', icon: LayoutDashboard },
@@ -14,8 +11,13 @@ const NAV_ITEMS = [
   { id: 'notifications', icon: Bell },
 ];
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+export function Sidebar() {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Extract base path for active state highlighting (e.g., "/workspaces" -> "workspaces")
+  const currentPage = location.pathname.split('/')[1] || 'dashboard';
 
   const initials = getDisplayName(user!)
     .split(' ')
@@ -29,28 +31,27 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       {/* Logo */}
       <div
         className="w-10 h-10 rounded-xl border border-[#374151] bg-white flex items-center justify-center mb-8 cursor-pointer shadow-lg"
-        onClick={() => onNavigate('dashboard')}
+        onClick={() => navigate('/dashboard')}
       >
-        <img src={logo} alt="Lunaris Logo" className='p-1'/>
+        <img src={logo} alt="Lunaris Logo" className='p-1' />
       </div>
 
       {/* Nav */}
       <nav className="flex flex-col gap-4 w-full px-3">
         {NAV_ITEMS.map(({ id, icon: Icon }) => (
-          <button
+          <Link
             key={id}
-            onClick={() => onNavigate(id)}
-            className={`p-3 rounded-xl transition-all flex justify-center w-full relative ${
-              currentPage === id
+            to={`/${id}`}
+            className={`p-3 rounded-xl transition-all flex justify-center w-full relative ${currentPage === id || (id === 'workspaces' && currentPage === 'projects')
                 ? 'bg-[#1F2937] text-[#3B82F6]'
                 : 'text-slate-500 hover:text-white hover:bg-[#151A22]'
-            }`}
+              }`}
           >
             <Icon size={20} strokeWidth={2.5} />
-            {currentPage === id && (
+            {(currentPage === id || (id === 'workspaces' && currentPage === 'projects')) && (
               <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-8 bg-[#3B82F6] rounded-r" />
             )}
-          </button>
+          </Link>
         ))}
       </nav>
 

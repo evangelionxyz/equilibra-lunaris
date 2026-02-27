@@ -16,6 +16,8 @@ import { MeetingFormModal } from '../components/modals/MeetingFormModal';
 import { useCurrentUserRole } from '../controllers/useCurrentUserRole';
 import { useProjectMembers } from '../controllers/useProjectMembers';
 import { projectService } from '../services/projectService';
+import { useNavigate } from 'react-router-dom';
+
 import type { TaskType, TaskStatus, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
@@ -32,6 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Overview');
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
@@ -131,7 +134,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     <div className="animate-in fade-in duration-500 flex flex-col h-full max-w-[1600px] mx-auto w-full">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button className="w-10 h-10 rounded-lg bg-[#151A22] border border-[#374151] flex items-center justify-center text-slate-400 hover:text-white">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-10 h-10 rounded-lg bg-[#151A22] border border-[#374151] flex items-center justify-center text-slate-400 hover:text-white"
+        >
           <ChevronLeft size={20} />
         </button>
         <div>
@@ -195,7 +201,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                       onDropTask={handleDropTask}
                       onDragStartColumn={handleDragStartColumn}
                       onDropColumn={handleDropColumn}
-                      onAddTask={(bId) => { setSelectedBucketTarget(bId); setShowTaskModal(true); }}
+                      onAddTask={(bId) => { setSelectedBucketTarget(Number(bId)); setShowTaskModal(true); }}
                     >
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">

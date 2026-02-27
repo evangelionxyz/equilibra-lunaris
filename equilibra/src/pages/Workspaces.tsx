@@ -1,27 +1,17 @@
 import React, { useState } from 'react';
-import { Briefcase, Target, Plus, Trash2 } from 'lucide-react';
+import { Briefcase, Plus, Trash2 } from 'lucide-react';
 import { ProjectCard } from '../components/dashboard/ProjectCard';
 import { useProjects } from '../controllers/useProjects';
 import { ProjectFormModal } from '../components/modals/ProjectFormModal';
 import type { Project } from '../models';
 
-interface WorkspacesPageProps {
-  setPage: (page: string) => void;
-  setProject: (id: number) => void;
-}
+import { useNavigate } from 'react-router-dom';
 
 type ModalMode = 'create' | 'edit' | null;
 
-const statusVariant = (status?: string): 'critical' | 'success' | 'primary' | 'default' => {
-  if (!status) return 'default';
-  if (status === 'Blocked' || status === 'At Risk') return 'critical';
-  if (status === 'On Track' || status === 'Healthy Flow') return 'success';
-  if (status === 'Heavy Load') return 'primary';
-  return 'default';
-};
-
-export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProject }) => {
+export const WorkspacesPage: React.FC = () => {
   const { projects, loading, createProject, deleteProject } = useProjects();
+  const navigate = useNavigate();
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editTarget, setEditTarget] = useState<Partial<Project>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -81,7 +71,7 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
                 title={p.name}
                 desc={p.issue || "System operating within normal parameters."}
                 progress={p.progress}
-                onClick={() => { setProject(p.id!); setPage('project'); }}
+                onClick={() => navigate(`/projects/${p.id}`)}
               />
               <button
                 onClick={() => handleDelete(p.id!)}
