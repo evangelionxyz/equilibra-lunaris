@@ -6,7 +6,7 @@ import { useToast } from "../design-system/Toast";
 import { useAuth } from "../auth/useAuth";
 
 export const useProjects = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { showToast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [memberships, setMemberships] = useState<ProjectMember[]>([]);
@@ -20,7 +20,7 @@ export const useProjects = () => {
     try {
       setLoading(true);
       const [data, mems] = await Promise.all([
-        projectService.getProjects(),
+        projectService.getMyProjects(),
         userService.getMembershipsForUser(userId),
       ]);
       setProjects(data);
@@ -36,27 +36,32 @@ export const useProjects = () => {
   }, [showToast, user?.db_user?.id]);
 
   useEffect(() => {
+    if (isLoading) return;
     fetchProjects();
-  }, [fetchProjects]);
+  }, [fetchProjects, isLoading]);
 
   const createProject = useCallback(
     async (
       data: Pick<Project, "name" | "gh_repo_url"> & { description?: string },
     ) => {
       try {
-        const created = await projectService.createProject(data);
+        const ownerId = user?.db_user?.id;
+        const created = await projectService.createProjectWithOwner(data as Project, ownerId);
         setProjects((prev) => [created, ...prev]);
+
+        // add local membership for UI immediately
         setMemberships((prev) => [
           ...prev,
           {
             project_id: created.id!,
-            user_id: user?.db_user?.id || 1,
+            user_id: ownerId || 1,
             role: "MANAGER" as Role,
             kpi_score: 100,
             max_capacity: 100,
             current_load: 0,
           },
         ]);
+
         showToast("Project created successfully!", "success");
         return created;
       } catch (err) {
