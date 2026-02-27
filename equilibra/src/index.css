@@ -1,68 +1,129 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Core Color Palette */
+  --cmd-app-bg: #0D1117;
+  --cmd-surface: #161B22;
+  --cmd-component: #21262D;
+  --cmd-border: #30363D;
+  --cmd-primary: #2F81F7;
+  --cmd-success: #238636;
+  --cmd-danger: #DA3633;
+  --cmd-warning: #D29922;
+
+  /* Typography Hierarchy */
+  --cmd-font-stack: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --cmd-text-h1: #F0F6FC;
+  --cmd-text-h2: #F0F6FC;
+  --cmd-text-body: #C9D1D9;
+  --cmd-text-meta: #8B949E;
+  --cmd-text-mono: #E6EDF3;
+  --cmd-scrollbar-track: var(--cmd-surface);
+  --cmd-scrollbar-thumb: var(--cmd-border);
+  --cmd-scrollbar-thumb-hover: #3b434d;
+
+  /* Global Styles based on Typography Hierarchy */
+  color-scheme: dark;
+  font-family: var(--cmd-font-stack);
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  font-weight: 500;
+  /* Medium for body */
+  font-size: 14px;
+  color: var(--cmd-text-body);
+  background: var(--cmd-app-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+:root[data-theme="light"] {
+  --cmd-app-bg: #f6f8fa;
+  --cmd-surface: #ffffff;
+  --cmd-component: #f0f3f6;
+  --cmd-border: #d0d7de;
+  --cmd-primary: #0969da;
+  --cmd-success: #1a7f37;
+  --cmd-danger: #cf222e;
+  --cmd-warning: #9a6700;
+
+  --cmd-text-h1: #1f2328;
+  --cmd-text-h2: #1f2328;
+  --cmd-text-body: #24292f;
+  --cmd-text-meta: #57606a;
+  --cmd-text-mono: #1f2328;
+
+  --cmd-scrollbar-track: #f6f8fa;
+  --cmd-scrollbar-thumb: #c1c9d1;
+  --cmd-scrollbar-thumb-hover: #9da7b2;
+
+  color-scheme: light;
 }
-a:hover {
-  color: #535bf2;
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cmd-scrollbar-thumb) var(--cmd-scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--cmd-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--cmd-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--cmd-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--cmd-scrollbar-thumb-hover);
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
-  min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+@media (prefers-reduced-motion: no-preference) {
+  *,
+  *::before,
+  *::after {
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      fill 180ms ease,
+      stroke 180ms ease;
+  }
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  border-radius: 0.45rem;
+  border: 1px solid #b8c2cf;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: #fff;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-  a:hover {
-    color: #747bff;
+
+  to {
+    transform: rotate(360deg);
   }
-  button {
-    background-color: #f9f9f9;
-  }
+}
+
+.cmd-animate-spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  transform-origin: center;
 }
