@@ -10,7 +10,6 @@ interface ProjectCardProps {
   variant: 'default' | 'primary' | 'success' | 'warning' | 'critical';
   progress?: number;
   tasks?: number;
-  isLead?: boolean;
   onClick?: () => void;
 }
 
@@ -21,12 +20,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   variant, 
   progress, 
   tasks, 
-  isLead,
   onClick 
 }) => (
   <div onClick={onClick} className="bg-[#151A22] border border-[#374151] rounded-2xl p-6 hover:border-[#3B82F6]/50 transition-all cursor-pointer group flex flex-col h-full">
     <div className="flex justify-between items-start mb-6">
-      <div className={`p-3 rounded-xl ${isLead ? 'bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20' : 'bg-[#1F2937] text-slate-400 border border-[#374151]'}`}>
+      <div className={`p-3 rounded-xl bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20'`}>
         <Briefcase size={20} />
       </div>
       <Badge variant={variant}>{tag}</Badge>

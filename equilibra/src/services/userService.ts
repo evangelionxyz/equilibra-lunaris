@@ -26,23 +26,7 @@ export const userService = {
   },
 
   getMembershipsForUser: async (userId: number): Promise<ProjectMember[]> => {
-    const projects =
-      await apiFetch<{ members: number[]; id: number }[]>("/projects");
-    const memberships: ProjectMember[] = [];
-
-    for (const p of projects) {
-      if (p.members?.includes(userId)) {
-        memberships.push({
-          user_id: userId,
-          project_id: p.id,
-          role: "MANAGER" as Role,
-          kpi_score: 90,
-          max_capacity: 100,
-          current_load: 50,
-        });
-      }
-    }
-    return memberships;
+    return await apiFetch<ProjectMember[]>("/users/me/project_members");
   },
 
   updateUser: async (id: number, data: User): Promise<User> => {

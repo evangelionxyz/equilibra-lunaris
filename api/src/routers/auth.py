@@ -170,6 +170,14 @@ async def auth_me(current_user: dict = Depends(get_current_user)):
     Return the profile of the currently authenticated GitHub user.
     Requires: Authorization: Bearer <access_token>
     """
+    db_user = await run_in_threadpool(
+        get_or_create_user,
+        int(current_user.get("id", 0) or 0),
+        current_user.get("email"),
+        current_user.get("login"),
+        current_user.get("name"),
+    )
+    
     return {
         "id": current_user.get("id"),
         "login": current_user.get("login"),
@@ -179,7 +187,7 @@ async def auth_me(current_user: dict = Depends(get_current_user)):
         "html_url": current_user.get("html_url"),
         "public_repos": current_user.get("public_repos"),
         "followers": current_user.get("followers"),
-        "db_user": None,
+        "db_user": db_user,
     }
 
 @router.post("/sync-user", response_model=DatabaseUser | None)

@@ -3,6 +3,8 @@ from typing import Optional
 from datetime import datetime
 from fastapi import HTTPException, Depends
 from routers.auth import get_current_user_optional
+from routers.auth import get_current_user
+from services.database.users import get_or_create_user
 import psycopg2
 import psycopg2.extras
 
@@ -54,31 +56,11 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
 
         cur.execute(sql, params)
         row = cur.fetchone()
-
-        # if a user is authenticated, create a project_member entry for them as Owner
-        try:
-            if row is None:
-                raise HTTPException(status_code=500, detail="Failed to create project")
-
-            project_id = row.get("id")
-
-            if current_user:
-                member_id = _generator.generate()
-                owner_user_id = int(current_user.get("id") or 0)
-
-                member_sql = (
-                    "INSERT INTO public.project_member (id, user_id, project_id, role, max_capacity, current_load) "
-                    "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load;"
-                )
-                cur.execute(member_sql, (member_id, owner_user_id, project_id, "Owner", 100, 0))
-                # consume the returned row
-                _ = cur.fetchone()
-
-            conn.commit()
-            return row
-        except Exception:
+        if row is None:
             conn.rollback()
-            raise
+            raise HTTPException(status_code=500, detail="Failed to create project")
+        conn.commit()
+        return row
     except HTTPException:
         conn.rollback()
         raise
@@ -103,6 +85,44 @@ def db_get_projects():
         )
         rows = cur.fetchall()
         return rows
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.get("/projects/mine")
+def db_get_projects_for_current_user(current_user: dict = Depends(get_current_user)):
+    """Return projects where the current user is a member (based on project_member.user_id).
+    Ensures a DB user record exists for the GitHub user via `get_or_create_user` and then
+    looks up project_member rows to find project ids and returns those projects.
+    """
+    conn = _get_conn()
+    cur = None
+    try:
+        db_user = get_or_create_user(int(current_user.get("id", 0) or 0), current_user.get("email"), current_user.get("login"), current_user.get("name"))
+        if not db_user:
+            raise HTTPException(status_code=404, detail="DB user not found")
+
+        db_user_id = db_user.get("id")
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT project_id FROM public.project_member WHERE user_id = %s",
+            (db_user_id,)
+        )
+        rows = cur.fetchall()
+        project_ids = [r.get("project_id") for r in rows]
+
+        if not project_ids:
+            return []
+
+        cur.execute(
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at FROM public.projects WHERE id = ANY(%s);",
+            (project_ids,)
+        )
+        projects = cur.fetchall()
+        return projects
     finally:
         if cur is not None:
             cur.close()

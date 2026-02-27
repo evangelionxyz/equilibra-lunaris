@@ -4,7 +4,7 @@ import type { Project } from '../../models';
 
 interface ProjectFormModalProps {
   onClose: () => void;
-  onSubmit: (data: Pick<Project, 'name' | 'gh_repo_url'> & {}) => Promise<void>;
+  onSubmit?: (data: Pick<Project, 'name' | 'gh_repo_url'> & {}) => Promise<void>;
   initial?: Partial<Project>;
   title?: string;
 }
@@ -14,15 +14,14 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 }) => {
   const [name, setName] = useState(initial.name ?? '');
   const [saving, setSaving] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setSaving(true);
-    await onSubmit({ name: name.trim(), gh_repo_url: [] });
-
+    const payload = { name: name.trim(), gh_repo_url: [] } as Pick<Project, 'name' | 'gh_repo_url'> & {};
+    if (onSubmit) {
+      await onSubmit(payload);
+    }
     setSaving(false);
-
     onClose();
   };
 
