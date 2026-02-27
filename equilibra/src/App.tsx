@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { LoadingScreen } from './components/ui/LoadingScreen'
+import { LoginPage } from './auth/LoginPage'
+import { useAuth } from './auth/useAuth';
 import { LayoutDashboard, Briefcase, Bell, Settings } from 'lucide-react';
 import { DashboardPage } from './pages/Dashboard';
 import { WorkspacesPage } from './pages/Workspaces';
@@ -18,23 +21,22 @@ function App() {
 
   return (
     <div className="h-screen w-full bg-[#0B0E14] text-slate-300 font-sans flex overflow-hidden selection:bg-[#3B82F6]/30">
-     
+
       {/* Global Sidebar */}
       <aside className="w-[80px] border-r border-[#374151] flex flex-col items-center py-6 bg-[#0B0E14] z-40 flex-shrink-0 relative">
         <div className="w-10 h-10 rounded-xl border border-[#374151] bg-[#151A22] flex flex-col items-center justify-center mb-8 cursor-pointer shadow-lg" onClick={() => setCurrentPage('dashboard')}>
-          <div className="w-4 h-4 rounded-full border-2 border-[#3B82F6] border-t-transparent animate-spin"/>
+          <div className="w-4 h-4 rounded-full border-2 border-[#3B82F6] border-t-transparent animate-spin" />
         </div>
-       
+
         <nav className="flex flex-col gap-4 w-full px-3">
           {navItems.map(nav => (
             <button
               key={nav.id}
               onClick={() => setCurrentPage(nav.id)}
-              className={`p-3 rounded-xl transition-all flex justify-center w-full relative ${
-                currentPage === nav.id
+              className={`p-3 rounded-xl transition-all flex justify-center w-full relative ${currentPage === nav.id
                   ? 'bg-[#1F2937] text-[#3B82F6]'
                   : 'text-slate-500 hover:text-white hover:bg-[#151A22]'
-              }`}
+                }`}
             >
               <nav.icon size={20} strokeWidth={2.5} />
               {currentPage === nav.id && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-8 bg-[#3B82F6] rounded-r" />}
@@ -66,7 +68,8 @@ function App() {
       </main>
 
       {/* Global Styles */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Inter', sans-serif; overflow: hidden; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
