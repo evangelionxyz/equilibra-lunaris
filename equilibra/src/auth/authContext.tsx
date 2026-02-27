@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState, useCallback, type ReactNode } from "react"
-import { fetchCurrentUser, postLogout, type GitHubUser } from "./api"
+import { fetchCurrentUser, postLogout, postSyncUser, type GitHubUser } from "./api"
 
 interface AuthState {
     user: GitHubUser | null
@@ -11,21 +11,35 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null)
 
 function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<GitHubUser | null>(null);
+    // Use server-backed session: always fetch fresh user on load and on refresh.
+    const [user, setUser] = useState<GitHubUser | null>(null)
     const [isLoading, setIsLoading] = useState(true)
 
     const refreshUser = useCallback(async () => {
         const nextUser = await fetchCurrentUser().catch(() => null)
-        setUser(nextUser)
+        if (!nextUser) {
+            setUser(null)
+            return
+        }
+
+        const dbUser = await postSyncUser().catch(() => null)
+        setUser({ ...nextUser, db_user: dbUser ?? nextUser.db_user })
     }, [])
 
     useEffect(() => {
         let isDisposed = false
 
         void fetchCurrentUser()
-            .then(nextUser => {
+            .then(async nextUser => {
                 if (isDisposed) return
-                setUser(nextUser)
+                if (!nextUser) {
+                    setUser(null)
+                    return
+                }
+
+                const dbUser = await postSyncUser().catch(() => null)
+                if (isDisposed) return
+                setUser({ ...nextUser, db_user: dbUser ?? nextUser.db_user })
             })
             .catch(() => {
                 if (isDisposed) return
