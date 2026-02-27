@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import uvicorn
 from fastapi import FastAPI
 #from database import close_pool, create_pool
-from routers import auth, github
+from routers import auth, github, meetings
 
 #@asynccontextmanager
 #async def lifespan(app: FastAPI):
@@ -29,6 +29,7 @@ def read_root():
 
 app.include_router(auth.router)
 app.include_router(github.router)
+app.include_router(meetings.router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, log_level="debug")

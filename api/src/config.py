@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     gh_app_installation_id: Annotated[int | None, BeforeValidator(_nullable_int)] = None
     gh_oauth_redirect_uri: str = "http://127.0.0.1:8000/auth/callback"
     gemini_api_key: str
+    secret_key: str
+    recall_api_key: str | None = None
+    telegram_bot_token: str | None = None
 
     # PostgreSQL
     postgresql_host: str = "localhost"
