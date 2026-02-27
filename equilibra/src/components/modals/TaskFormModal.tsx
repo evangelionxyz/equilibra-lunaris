@@ -6,9 +6,9 @@ const TASK_TYPES: TaskType[] = ['CODE', 'REQUIREMENT', 'DESIGN', 'NON-CODE', 'OT
 const TASK_STATUSES: TaskStatus[] = ['TODO', 'ONGOING', 'ON REVIEW', 'COMPLETED', 'DRAFT', 'PENDING'];
 
 interface TaskFormModalProps {
-  projectId: number;
+  projectId: number | string;
   onClose: () => void;
-  onSubmit: (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus }) => Promise<void>;
+  onSubmit: (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number }) => Promise<void>;
   initial?: Partial<Task>;
   title?: string;
 }
@@ -26,18 +26,18 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
     e.preventDefault();
     if (!taskTitle.trim()) return;
     setSaving(true);
-    await onSubmit({ project_id: projectId, title: taskTitle.trim(), type, weight, status });
+    await onSubmit({ project_id: projectId, title: taskTitle.trim(), type, weight, status, bucket_id: initial.bucket_id });
     setSaving(false);
     onClose();
   };
 
   const statusColors: Record<TaskStatus, string> = {
-    DRAFT:       'bg-slate-700 text-slate-300    border-slate-600',
-    PENDING:     'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30',
-    TODO:        'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/30',
-    ONGOING:     'bg-[#8B5CF6]/10 text-[#8B5CF6] border-[#8B5CF6]/30',
+    DRAFT: 'bg-slate-700 text-slate-300    border-slate-600',
+    PENDING: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30',
+    TODO: 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/30',
+    ONGOING: 'bg-[#8B5CF6]/10 text-[#8B5CF6] border-[#8B5CF6]/30',
     'ON REVIEW': 'bg-[#EC4899]/10 text-[#EC4899] border-[#EC4899]/30',
-    COMPLETED:   'bg-[#16A34A]/10 text-[#22C55E] border-[#16A34A]/30',
+    COMPLETED: 'bg-[#16A34A]/10 text-[#22C55E] border-[#16A34A]/30',
   };
 
   return (
@@ -100,9 +100,8 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                   key={s}
                   type="button"
                   onClick={() => setStatus(s)}
-                  className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-all ${
-                    status === s ? statusColors[s] : 'bg-[#0B0E14] text-slate-500 border-[#374151] hover:border-slate-500'
-                  }`}
+                  className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-all ${status === s ? statusColors[s] : 'bg-[#0B0E14] text-slate-500 border-[#374151] hover:border-slate-500'
+                    }`}
                 >
                   {s}
                 </button>

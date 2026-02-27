@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { UserProjectStats } from "../models";
-import { statService } from "../services/mockService";
+import { statsService } from "../services/statsService";
 
-export const useUserProjectStats = (projectId: number, userId: number = 1) => {
+export const useUserProjectStats = (projectId: number | string, userId: number = 1) => {
   const [stats, setStats] = useState<UserProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -10,7 +10,7 @@ export const useUserProjectStats = (projectId: number, userId: number = 1) => {
     let isMounted = true;
     (async () => {
       setLoading(true);
-      const data = await statService.getUserStatsByProject(userId, projectId);
+      const data = await statsService.getStatsByProject(projectId, userId);
       if (isMounted) {
         setStats(data);
         setLoading(false);

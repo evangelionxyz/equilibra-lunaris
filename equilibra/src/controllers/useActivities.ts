@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { Activity } from "../models";
-import { activityService } from "../services/mockService";
+import { activityService } from "../services/activityService";
 
-export const useActivities = (projectId: number) => {
+export const useActivities = (projectId: number | string) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 

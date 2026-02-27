@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { ProjectMember } from "../models";
-import { memberService } from "../services/mockService";
+import { userService } from "../services/userService";
 
-export const useProjectMembers = (projectId: number) => {
+export const useProjectMembers = (projectId: number | string) => {
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -10,7 +10,7 @@ export const useProjectMembers = (projectId: number) => {
     let isMounted = true;
     (async () => {
       setLoading(true);
-      const data = await memberService.getMembersByProject(projectId);
+      const data = await userService.getProjectMembers(projectId);
       if (isMounted) {
         setMembers(data);
         setLoading(false);

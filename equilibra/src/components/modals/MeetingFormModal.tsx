@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Video } from 'lucide-react';
 
 interface MeetingFormModalProps {
-  projectId: number;
+  projectId: number | string;
   onClose: () => void;
   onSubmit: (data: {
     project_id: number;

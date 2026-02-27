@@ -17,13 +17,11 @@ import { CriticalWatchlist } from '../components/dashboard/CriticalWatchlist';
 import { useAuth } from '../auth/useAuth';
 import { getDisplayName } from '../auth/displayName';
 
-interface DashboardPageProps {
-  setPage: (page: string) => void;
-  setProject: (id: number) => void;
-}
+import { useNavigate } from 'react-router-dom';
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProject }) => {
+export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const displayName = user ? getDisplayName(user) : '…';
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const currentMonthDays = Array.from({ length: 31 }, (_, i) => ({ day: i + 1, isCurrent: true }));
@@ -40,7 +38,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProjec
 
   const handleEventNavigation = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setPage('project');
+    // In a real app we would navigate to a specific project. Hardcoding 1 for demo purposes based on UI mock
+    navigate('/projects/1');
   };
 
   return (
@@ -66,18 +65,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProjec
 
         {/* Action Banner (Matches Reference layout) */}
         <div className="bg-[#151A22] border border-[#374151] rounded-2xl p-6 flex items-center justify-between shadow-lg">
-           <div className="flex items-center gap-6">
-              <button className="w-8 h-8 rounded-lg bg-[#1F2937] text-slate-400 flex items-center justify-center hover:text-white border border-[#374151]"><ChevronLeft size={16}/></button>
-              <div className="bg-[#3B82F6]/10 border border-[#3B82F6]/20 p-3 rounded-xl flex-shrink-0">
-                <Zap className="text-[#3B82F6]" size={24} />
-              </div>
-              <div>
-                <h4 className="text-white font-medium text-[16px]">Meeting <span className="text-[#3B82F6] italic font-semibold">Sprint Review</span> besok belum memiliki agenda. Generate otomatis?</h4>
-                <p className="text-slate-400 text-[10px] mt-1.5 uppercase font-bold tracking-widest">Equilibra Assistant • Meeting Prep</p>
-              </div>
-              <button className="w-8 h-8 rounded-lg bg-[#1F2937] text-slate-400 flex items-center justify-center hover:text-white border border-[#374151]"><ChevronRight size={16}/></button>
-           </div>
-           <Button variant="white">Generate Agenda</Button>
+          <div className="flex items-center gap-6">
+            <button className="w-8 h-8 rounded-lg bg-[#1F2937] text-slate-400 flex items-center justify-center hover:text-white border border-[#374151]"><ChevronLeft size={16} /></button>
+            <div className="bg-[#3B82F6]/10 border border-[#3B82F6]/20 p-3 rounded-xl flex-shrink-0">
+              <Zap className="text-[#3B82F6]" size={24} />
+            </div>
+            <div>
+              <h4 className="text-white font-medium text-[16px]">Meeting <span className="text-[#3B82F6] italic font-semibold">Sprint Review</span> besok belum memiliki agenda. Generate otomatis?</h4>
+              <p className="text-slate-400 text-[10px] mt-1.5 uppercase font-bold tracking-widest">Equilibra Assistant • Meeting Prep</p>
+            </div>
+            <button className="w-8 h-8 rounded-lg bg-[#1F2937] text-slate-400 flex items-center justify-center hover:text-white border border-[#374151]"><ChevronRight size={16} /></button>
+          </div>
+          <Button variant="white">Generate Agenda</Button>
         </div>
       </div>
 
@@ -85,7 +84,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProjec
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Calendar - Left Column */}
         <div className="xl:col-span-8 flex flex-col h-full relative z-10">
-          <SurfaceCard title="Schedule Sync" subtitle="Global Timeline" icon={Calendar} className="h-full flex flex-col" rightElement={<MoreHorizontal className="text-slate-500 cursor-pointer" size={18}/>}>
+          <SurfaceCard title="Schedule Sync" subtitle="Global Timeline" icon={Calendar} className="h-full flex flex-col" rightElement={<MoreHorizontal className="text-slate-500 cursor-pointer" size={18} />}>
             <div className="grid grid-cols-7 gap-px bg-[#374151] border border-[#374151] rounded-xl flex-1">
               {days.map((d, i) => (
                 <div key={`day-label-${i}`} className={`bg-[#1F2937] py-3 text-center text-[10px] text-slate-400 font-bold uppercase ${i === 0 ? 'rounded-tl-xl' : ''} ${i === 6 ? 'rounded-tr-xl' : ''}`}>{d}</div>
@@ -98,29 +97,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProjec
                       {d.day < 10 ? `0${d.day}` : d.day}
                     </span>
                     <div className="mt-auto flex flex-col gap-1 w-full pb-1">
-                       {events.length > 0 && (
-                          <div className="flex gap-1 w-full px-1">
-                            {events.map((ev, idx) => (
-                               <div key={idx} className={`h-1 flex-1 rounded-sm ${ev.color}`} />
-                            ))}
-                          </div>
-                       )}
+                      {events.length > 0 && (
+                        <div className="flex gap-1 w-full px-1">
+                          {events.map((ev, idx) => (
+                            <div key={idx} className={`h-1 flex-1 rounded-sm ${ev.color}`} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {/* Hover Tooltip (Interactive Bridge) */}
                     {events.length > 0 && (
                       <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 pb-2 hidden group-hover:block z-[60] w-56">
-                         <div className="bg-[#1F2937] border border-[#374151] rounded-lg p-2 shadow-2xl">
-                           <div className="text-[10px] text-slate-400 uppercase font-bold mb-2 px-1 pt-1">Events on {d.day}</div>
-                           {events.map((ev, idx) => (
-                             <div key={idx} onClick={handleEventNavigation} className="flex items-center justify-between gap-2 p-2 hover:bg-[#374151] rounded-lg cursor-pointer transition-colors">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${ev.color}`} />
-                                  <span className="text-white text-[12px] font-medium">{ev.title}</span>
-                                </div>
-                                <ArrowUpRight size={14} className="text-slate-400" />
-                             </div>
-                           ))}
-                         </div>
+                        <div className="bg-[#1F2937] border border-[#374151] rounded-lg p-2 shadow-2xl">
+                          <div className="text-[10px] text-slate-400 uppercase font-bold mb-2 px-1 pt-1">Events on {d.day}</div>
+                          {events.map((ev, idx) => (
+                            <div key={idx} onClick={handleEventNavigation} className="flex items-center justify-between gap-2 p-2 hover:bg-[#374151] rounded-lg cursor-pointer transition-colors">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${ev.color}`} />
+                                <span className="text-white text-[12px] font-medium">{ev.title}</span>
+                              </div>
+                              <ArrowUpRight size={14} className="text-slate-400" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -132,13 +131,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProjec
 
         {/* Action Columns - Right Column */}
         <div className="xl:col-span-4 space-y-6 flex flex-col min-h-0 max-h-[750px] relative z-0">
-          <UrgentActions className="flex-1 min-h-0" onNavigateProject={(id) => { setProject(id); setPage('project'); }} />
+          <UrgentActions className="flex-1 min-h-0" onNavigateProject={(id) => navigate(`/projects/${id}`)} />
           <MyQueue className="flex-1 min-h-0" />
         </div>
       </div>
 
       {/* Critical Watchlist - Bottom Row */}
-      <CriticalWatchlist onNavigate={(id) => { setProject(id); setPage('project'); }} />
+      <CriticalWatchlist onNavigate={(id) => navigate(`/projects/${id}`)} />
     </div>
   );
 };

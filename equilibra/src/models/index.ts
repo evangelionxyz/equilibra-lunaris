@@ -1,4 +1,3 @@
-export type Role = "MANAGER" | "PROGRAMMER" | "DESIGNER";
 export type MeetingSource = "RECALL_BOT" | "MANUAL_UPLOAD" | "MANUAL";
 export type MeetingStatus = "SCHEDULED" | "PROCESSING" | "COMPLETED" | "FAILED";
 export type TaskStatus =
@@ -11,11 +10,25 @@ export type TaskStatus =
 export type TaskType = "CODE" | "REQUIREMENT" | "DESIGN" | "OTHER" | "NON-CODE";
 export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
 
+export interface Bucket {
+  id?: number;
+  project_id: number;
+  state: string;
+  order_idx: number;
+  is_deleted?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface User {
-  id: number;
-  github_id: number;
-  github_username: string;
-  username?: string;
+  id?: number;
+  gh_id: number;
+  gh_username: string;
+  gh_access_token?: string;
+  telegram_chat_id?: string;
+  display_name?: string;
+  email?: string;
+  created_at?: string;
 }
 
 export interface UserAlias {
@@ -24,37 +37,42 @@ export interface UserAlias {
 }
 
 export interface Project {
-  id: number;
+  id?: number;
   name: string;
-  github_repo_url: string;
+  gh_repo_url: string[];
+  description?: string;
   status?: string;
   progress?: number;
   issue?: string;
   tags?: string[];
   isLead?: boolean;
   tasksPending?: number;
+  is_deleted?: boolean;
+  roles?: string[];
 }
 
 export interface ProjectMember {
+  id?: number;
   user_id: number;
   project_id: number;
-  role: Role;
+  role: string;
   kpi_score: number; // VISIBLE TIER
   max_capacity: number;
   current_load: number; // For workload distribution chart
+  gh_username?: string;
 }
 
 export interface Activity {
-  id: number;
+  id?: number;
   project_id: number;
   user_name: string;
   action: string; // e.g., 'pushed', 'moved', 'generated'
   target: string; // e.g., 'auth-v2', 'Task A to QA'
-  created_at: string;
+  created_at?: string;
 }
 
 export interface ProjectMetric {
-  id: number;
+  id?: number;
   project_id: number;
   label: string; // e.g., 'Code Review Cycle'
   value: string; // e.g., '48h'
@@ -71,7 +89,7 @@ export interface UserProjectStats {
 }
 
 export interface Meeting {
-  id: number;
+  id?: number;
   project_id: number;
   source_type: MeetingSource;
   source_reference?: string;
@@ -90,15 +108,17 @@ export interface Meeting {
 }
 
 export interface Task {
-  id: number;
-  project_id: number;
-  meeting_id?: number;
-  parent_task_id?: number;
-  lead_assignee_id?: number; // VISIBLE TIER
-  suggested_assignee_id?: number;
+  id?: number | string;
+  project_id: number | string;
+  bucket_id?: number | string; // Replaces static status in logic
+  order_idx?: number;
+  meeting_id?: number | string;
+  parent_task_id?: number | string;
+  lead_assignee_id?: number | string; // VISIBLE TIER
+  suggested_assignee_id?: number | string;
   title: string;
   description?: string; // LAZY LOAD TIER
-  status: TaskStatus; // VISIBLE TIER
+  status?: TaskStatus; // Derived from bucket for UI
   type: TaskType;
   weight: number; // VISIBLE TIER
   branch_name?: string;
@@ -114,7 +134,7 @@ export interface TaskAssignee {
 }
 
 export interface Alert {
-  id: number;
+  id?: number;
   user_id: number;
   project_id: number;
   title: string;
@@ -123,5 +143,5 @@ export interface Alert {
   severity: "critical" | "warning" | "info";
   suggested_actions: string[];
   is_resolved: boolean;
-  created_at: string;
+  created_at?: string;
 }
