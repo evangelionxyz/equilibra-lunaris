@@ -1,26 +1,13 @@
 import { apiFetch } from "./apiClient";
-import type { Meeting, MeetingSource } from "../models";
-
-interface BackendMeeting {
-  id: string;
-  title: string;
-  date?: string;
-  time?: string;
-}
+import type { Meeting } from "../models";
 
 export const meetingService = {
   getMeetingsByProject: async (projectId: number): Promise<Meeting[]> => {
-    // Mocked in API router/meetings.py as returning a list
-    const meetings = await apiFetch<BackendMeeting[]>("/meetings");
+    const meetings = await apiFetch<Meeting[]>("/meetings");
+    // Ensure all meetings belong to the project in this simple implementation
     return meetings.map((m) => ({
-      id: parseInt(m.id.split("-")[1]) || 0, // Converting mock string ID to number
+      ...m,
       project_id: projectId,
-      source_type: "MANUAL" as MeetingSource,
-      title: m.title,
-      date: m.date || new Date().toISOString().split("T")[0],
-      time: m.time || "10:00",
-      attendees: [],
-      action_items: [],
     }));
   },
 
@@ -35,7 +22,6 @@ export const meetingService = {
       {
         method: "POST",
         body: formData,
-        // browser-fetch automatically sets content-type for FormData with boundary
         headers: {},
       },
     );

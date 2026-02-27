@@ -13,12 +13,11 @@ from services.database.id_generator import _generator
 class DatabaseProject(BaseModel):
     id: Optional[int] = None
     name: str
-    gh_repo_url: Optional[str] = None
+    gh_repo_url: Optional[list[str]] = Field(default_factory=list)
     description: Optional[str] = None
     is_deleted: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    gh_repo_url: Optional[list[str]] = Field(default_factory=list)
 
 
 @db_router.post("/projects")

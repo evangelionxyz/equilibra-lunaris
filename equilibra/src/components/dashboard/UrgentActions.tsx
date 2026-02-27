@@ -43,7 +43,7 @@ export const UrgentActions: React.FC<UrgentActionsProps> = ({ onNavigateProject,
           ) : (
             alerts.map((alert) => (
               <div 
-                key={alert.id}
+                key={alert.id!}
                 onClick={() => setSelectedAlert(alert)}
                 className={`p-4 rounded-xl bg-[#1F2937] border group cursor-pointer transition-colors flex justify-between items-center ${
                   alert.severity === 'critical' ? 'border-[#EF4444]/30 hover:border-[#EF4444]' : 'border-[#F59E0B]/30 hover:border-[#F59E0B]'
@@ -71,7 +71,7 @@ export const UrgentActions: React.FC<UrgentActionsProps> = ({ onNavigateProject,
           projectName={getProjectName(selectedAlert.project_id)}
           onClose={() => setSelectedAlert(null)}
           onNavigate={() => onNavigateProject(selectedAlert.project_id)}
-          onResolve={() => resolveAlert(selectedAlert.id)}
+          onResolve={() => resolveAlert(selectedAlert.id!)}
         />
       )}
     </>

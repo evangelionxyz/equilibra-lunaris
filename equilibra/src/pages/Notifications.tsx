@@ -61,7 +61,7 @@ export const NotificationsPage: React.FC = () => {
           </div>
         ) : (
           alerts.map((alert) => (
-            <div key={alert.id} className="bg-[#151A22] border border-[#374151] p-6 rounded-2xl flex gap-6 items-center hover:bg-[#1F2937] transition-colors group">
+            <div key={alert.id!} className="bg-[#151A22] border border-[#374151] p-6 rounded-2xl flex gap-6 items-center hover:bg-[#1F2937] transition-colors group">
               <div className={`w-14 h-14 rounded-xl border flex items-center justify-center flex-shrink-0 ${
                 alert.severity === 'critical' ? 'bg-[#EF4444]/10 border-[#EF4444]/20 text-[#EF4444]' : 'bg-[#3B82F6]/10 border-[#3B82F6]/20 text-[#3B82F6]'
               }`}>
@@ -73,7 +73,7 @@ export const NotificationsPage: React.FC = () => {
                     {alert.type}
                   </Badge>
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                    <Clock size={10} /> {getTimeAgo(alert.created_at)}
+                    <Clock size={10} /> {getTimeAgo(alert.created_at!)}
                   </span>
                   <span className="text-[#3B82F6] text-[10px] font-bold uppercase tracking-wider">• {getProjectName(alert.project_id)}</span>
                 </div>
@@ -82,7 +82,7 @@ export const NotificationsPage: React.FC = () => {
               </div>
               <div className="flex gap-2">
                 <button 
-                  onClick={() => resolveAlert(alert.id)}
+                  onClick={() => resolveAlert(alert.id!)}
                   className="px-4 py-2 rounded-lg border border-[#374151] text-slate-400 text-[12px] font-bold hover:bg-[#374151] hover:text-white transition-all"
                 >
                   Dismiss

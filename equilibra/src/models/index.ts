@@ -12,23 +12,24 @@ export type TaskType = "CODE" | "REQUIREMENT" | "DESIGN" | "OTHER" | "NON-CODE";
 export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
 
 export interface Bucket {
-  id: number;
+  id?: number;
   project_id: number;
   state: string;
   order_idx: number;
-  is_deleted: boolean;
-  created_at: string;
-  updated_at: string;
+  is_deleted?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface User {
-  id: number;
+  id?: number;
   gh_id: number;
   gh_username: string;
   gh_access_token?: string;
   telegram_chat_id?: string;
   display_name?: string;
   email?: string;
+  created_at?: string;
 }
 
 export interface UserAlias {
@@ -37,18 +38,21 @@ export interface UserAlias {
 }
 
 export interface Project {
-  id: number;
+  id?: number;
   name: string;
-  gh_repo_url: string;
+  gh_repo_url: string[];
+  description?: string;
   status?: string;
   progress?: number;
   issue?: string;
   tags?: string[];
   isLead?: boolean;
   tasksPending?: number;
+  is_deleted?: boolean;
 }
 
 export interface ProjectMember {
+  id?: number;
   user_id: number;
   project_id: number;
   role: Role;
@@ -58,16 +62,16 @@ export interface ProjectMember {
 }
 
 export interface Activity {
-  id: number;
+  id?: number;
   project_id: number;
   user_name: string;
   action: string; // e.g., 'pushed', 'moved', 'generated'
   target: string; // e.g., 'auth-v2', 'Task A to QA'
-  created_at: string;
+  created_at?: string;
 }
 
 export interface ProjectMetric {
-  id: number;
+  id?: number;
   project_id: number;
   label: string; // e.g., 'Code Review Cycle'
   value: string; // e.g., '48h'
@@ -84,7 +88,7 @@ export interface UserProjectStats {
 }
 
 export interface Meeting {
-  id: number;
+  id?: number;
   project_id: number;
   source_type: MeetingSource;
   source_reference?: string;
@@ -103,9 +107,9 @@ export interface Meeting {
 }
 
 export interface Task {
-  id: number;
+  id?: number;
   project_id: number;
-  bucket_id: number; // Replaces static status in logic
+  bucket_id?: number; // Replaces static status in logic
   meeting_id?: number;
   parent_task_id?: number;
   lead_assignee_id?: number; // VISIBLE TIER
@@ -128,7 +132,7 @@ export interface TaskAssignee {
 }
 
 export interface Alert {
-  id: number;
+  id?: number;
   user_id: number;
   project_id: number;
   title: string;
@@ -137,57 +141,5 @@ export interface Alert {
   severity: "critical" | "warning" | "info";
   suggested_actions: string[];
   is_resolved: boolean;
-  created_at: string;
-}
-
-// --- API Request Types ---
-
-export interface CreateProjectRequest {
-  name: string;
-  gh_repo_url?: string;
-  description?: string;
-}
-
-export interface UpdateProjectRequest {
-  name?: string;
-  gh_repo_url?: string;
-  description?: string;
-  is_deleted?: boolean;
-}
-
-export interface CreateTaskRequest {
-  project_id: number;
-  bucket_id?: number;
-  meeting_id?: number;
-  parent_task_id?: number;
-  lead_assignee_id?: number;
-  suggested_assignee_id?: number;
-  title: string;
-  description?: string;
-  type: TaskType;
-  weight: number;
-  branch_name?: string;
-}
-
-export interface UpdateTaskRequest {
-  bucket_id?: number;
-  meeting_id?: number;
-  parent_task_id?: number;
-  lead_assignee_id?: number;
-  suggested_assignee_id?: number;
-  title?: string;
-  description?: string;
-  type?: TaskType;
-  weight?: number;
-  branch_name?: string;
-  is_deleted?: boolean;
-}
-
-export interface UpdateUserRequest {
-  display_name?: string;
-  telegram_chat_id?: string;
-  gh_username?: string;
-  gh_access_token?: string;
-  gh_id?: string;
-  email?: string;
+  created_at?: string;
 }

@@ -1,31 +1,9 @@
 import { apiFetch } from "./apiClient";
-import type { User, ProjectMember, Role, UpdateUserRequest } from "../models";
-
-interface BackendUser {
-  id: number;
-  display_name: string | null;
-  telegram_chat_id: string | null;
-  gh_username: string;
-  gh_access_token: string | null;
-  gh_id: string | null;
-  email: string | null;
-  created_at: string;
-}
-
-const transformUser = (bu: BackendUser): User => ({
-  id: bu.id,
-  gh_id: parseInt(bu.gh_id || "0"),
-  gh_username: bu.gh_username,
-  gh_access_token: bu.gh_access_token || undefined,
-  telegram_chat_id: bu.telegram_chat_id || undefined,
-  display_name: bu.display_name || undefined,
-  email: bu.email || undefined,
-});
+import type { User, ProjectMember, Role } from "../models";
 
 export const userService = {
   getUsers: async (): Promise<User[]> => {
-    const users = await apiFetch<BackendUser[]>("/users");
-    return users.map(transformUser);
+    return await apiFetch<User[]>("/users");
   },
 
   getProjectMembers: async (projectId: number): Promise<ProjectMember[]> => {
@@ -36,9 +14,9 @@ export const userService = {
     const allUsers = await userService.getUsers();
 
     return allUsers
-      .filter((u) => memberIds.includes(u.id))
+      .filter((u) => u.id !== undefined && memberIds.includes(u.id))
       .map((u) => ({
-        user_id: u.id,
+        user_id: u.id!,
         project_id: projectId,
         role: "PROGRAMMER" as Role,
         kpi_score: 85,
@@ -67,12 +45,11 @@ export const userService = {
     return memberships;
   },
 
-  updateUser: async (id: number, data: UpdateUserRequest): Promise<User> => {
-    const response = await apiFetch<BackendUser>(`/users/${id}`, {
+  updateUser: async (id: number, data: User): Promise<User> => {
+    return await apiFetch<User>(`/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
-    return transformUser(response);
   },
 
   deleteUser: async (id: number): Promise<void> => {

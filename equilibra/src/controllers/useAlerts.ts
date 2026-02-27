@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Alert } from "../models";
-import { alertService } from "../services/mockService";
+import { alertService } from "../services/alertService";
 
 export const useAlerts = (projectId?: number) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);

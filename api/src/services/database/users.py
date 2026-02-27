@@ -132,6 +132,7 @@ def get_or_create_user(github_id: Optional[int] = None, email: Optional[str] = N
         safe_telegram_chat_id = telegram_chat_id if telegram_chat_id is not None else ""
 
         mapping = {
+            "id": _generator.generate(),
             "display_name": display_name,
             "telegram_chat_id": safe_telegram_chat_id,
             "gh_username": username if username else None,

@@ -11,7 +11,7 @@ import { SurfaceCard } from '../design-system/SurfaceCard';
 import { TaskFormModal } from '../components/modals/TaskFormModal';
 import { MeetingFormModal } from '../components/modals/MeetingFormModal';
 import { useCurrentUserRole } from '../controllers/useCurrentUserRole';
-import { projectService } from '../services/mockService';
+import { projectService } from '../services/projectService';
 import type { TaskType, TaskStatus, Project } from '../models';
 
 interface ProjectDetailsProps {
@@ -131,7 +131,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">
                           <KanbanCard
-                            id={task.id}
+                            id={task.id!}
                             title={task.title}
                             type={task.type}
                             weight={String(task.weight)}
@@ -141,7 +141,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                             isSuggested={task.isSuggested}
                           />
                           <button
-                            onClick={() => deleteTask(task.id)}
+                            onClick={() => deleteTask(task.id!)}
                             className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 p-1 rounded bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                           >
                             <Trash2 size={10} />
@@ -179,7 +179,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                     <div key={mtg.id} className="relative group/mtg">
                       <MeetingAccordion meeting={mtg} isDefaultExpanded={idx === 0} />
                       <button
-                        onClick={() => deleteMeeting(mtg.id)}
+                        onClick={() => deleteMeeting(mtg.id!)}
                         className="absolute top-3 right-10 opacity-0 group-hover/mtg:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                       >
                         <Trash2 size={12} />
