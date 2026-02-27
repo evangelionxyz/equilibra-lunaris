@@ -7,7 +7,7 @@ interface TaskDetailModalProps {
     buckets: Bucket[];
     members: ProjectMember[];
     onClose: () => void;
-    onUpdate: (taskId: number | string, data: Partial<Task>) => Promise<void>;
+    onUpdate: (taskId: number, data: Partial<Task>) => Promise<void>;
 }
 
 const TASK_TYPES: TaskType[] = ['CODE', 'REQUIREMENT', 'DESIGN', 'NON-CODE', 'OTHER'];
@@ -19,9 +19,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const [title, setTitle] = useState(task.title);
     const [description, setDescription] = useState(task.description || '');
     const [type, setType] = useState<TaskType>(task.type);
-    const [weight, setWeight] = useState<string | number>(task.weight);
-    const [bucketId, setBucketId] = useState<number | string | undefined>(task.bucket_id);
-    const [leadAssigneeId, setLeadAssigneeId] = useState<number | string | undefined>(task.lead_assignee_id);
+    const [weight, setWeight] = useState<number>(task.weight);
+    const [bucketId, setBucketId] = useState<number | undefined>(task.bucket_id ? Number(task.bucket_id) : undefined);
+    const [leadAssigneeId, setLeadAssigneeId] = useState<number | undefined>(task.lead_assignee_id ? Number(task.lead_assignee_id) : undefined);
+
     const [branchName, setBranchName] = useState(task.branch_name || '');
     const [saving, setSaving] = useState(false);
 
@@ -30,8 +31,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         setDescription(task.description || '');
         setType(task.type);
         setWeight(task.weight);
-        setBucketId(task.bucket_id);
-        setLeadAssigneeId(task.lead_assignee_id);
+        setBucketId(task.bucket_id ? Number(task.bucket_id) : undefined);
+        setLeadAssigneeId(task.lead_assignee_id ? Number(task.lead_assignee_id) : undefined);
         setBranchName(task.branch_name || '');
     }, [task]);
 
@@ -40,7 +41,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         if (!title.trim() || !task.id) return;
 
         setSaving(true);
-        await onUpdate(String(task.id), {
+        await onUpdate(Number(task.id), {
             title: title.trim(),
             description: description.trim() || undefined,
             type,
@@ -131,7 +132,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><Activity size={14} /> State Group</label>
                             <select
                                 value={bucketId ? String(bucketId) : ''}
-                                onChange={(e) => setBucketId(e.target.value ? String(e.target.value) : undefined)}
+                                onChange={(e) => setBucketId(e.target.value ? Number(e.target.value) : undefined)}
                                 className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#3B82F6] transition-colors"
                             >
                                 <option value="" disabled>Select Bucket...</option>
@@ -170,7 +171,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lead Assignee</label>
                             <select
                                 value={leadAssigneeId ? String(leadAssigneeId) : ''}
-                                onChange={(e) => setLeadAssigneeId(e.target.value ? String(e.target.value) : undefined)}
+                                onChange={(e) => setLeadAssigneeId(e.target.value ? Number(e.target.value) : undefined)}
                                 className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#3B82F6] transition-colors"
                             >
                                 <option value="">Unassigned</option>

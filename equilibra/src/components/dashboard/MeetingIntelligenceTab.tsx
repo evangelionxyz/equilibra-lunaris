@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Video, Link as LinkIcon, Upload, CheckCircle2, Trash2, Save, ArrowLeft, Loader2, Sparkles, Calendar, User } from 'lucide-react';
 import "../MeetingAnalyzer.css"; // Reusing established styles
 import { useTasks } from '../../controllers/useTasks';
-import { useMeetings } from '../../controllers/useMeetings';
 
 interface Task {
     id: string;
@@ -23,30 +22,30 @@ interface MoMData {
 interface AnalyzerResult {
     mom: MoMData;
     tasks: Task[];
+    alertId?: number;
 }
 
 interface MeetingIntelligenceTabProps {
-    projectId: number | string;
+    projectId: number;
+    onMeetingCreated?: (data: any) => Promise<any>;
 }
 
-export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ projectId }) => {
+export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ projectId, onMeetingCreated }) => {
     const [view, setView] = useState<'choice' | 'upload' | 'link' | 'loading' | 'processing' | 'result'>('choice');
     const [meetingUrl, setMeetingUrl] = useState('');
     const [result, setResult] = useState<AnalyzerResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [syncing, setSyncing] = useState(false);
     const [synced, setSynced] = useState(false);
-    const [source, setSource] = useState<'MANUAL_UPLOAD' | 'RECALL_BOT'>('MANUAL_UPLOAD');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [lastMeetingCount, setLastMeetingCount] = useState(0);
 
     const { createTask } = useTasks(projectId);
-    const { createMeeting } = useMeetings(projectId);
 
     // Get current meeting count for polling reference
     const fetchMeetingCount = async () => {
         try {
-            const response = await fetch('/api/meetings', { credentials: 'include' });
+            const response = await fetch(`http://localhost:8000/meetings/project/${projectId}`, { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 return data.length;
@@ -62,7 +61,7 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
         let interval: any;
         if (view === 'processing') {
             interval = setInterval(async () => {
-                const response = await fetch('/api/meetings', { credentials: 'include' });
+                const response = await fetch(`http://localhost:8000/meetings/project/${projectId}`, { credentials: 'include' });
                 if (response.ok) {
                     const meetings = await response.json();
                     if (meetings.length > lastMeetingCount) {
@@ -103,13 +102,14 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
         setView('loading');
         setError(null);
-        setSource('MANUAL_UPLOAD');
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('project_id', projectId.toString());
 
         try {
-            const response = await fetch('/api/analyze-meeting', {
+            // Hitting backend directly to avoid Vite proxy multipart form drop bugs
+            const response = await fetch('http://localhost:8000/analyze-meeting', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
@@ -130,8 +130,15 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
             setResult({
                 mom: data.data.mom,
-                tasks: transformedTasks
+                tasks: transformedTasks,
+                alertId: data.alert_id
             });
+
+            // Refresh history immediately
+            if (data.meeting && onMeetingCreated) {
+                onMeetingCreated(data.meeting);
+            }
+
             setView('result');
         } catch (err: any) {
             setError(err.message || 'Something went wrong during analysis');
@@ -145,13 +152,12 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
         setView('loading');
         setError(null);
-        setSource('RECALL_BOT');
 
         try {
             const count = await fetchMeetingCount();
             setLastMeetingCount(count);
 
-            const response = await fetch(`/api/invite-bot?meeting_url=${encodeURIComponent(meetingUrl)}`, {
+            const response = await fetch(`http://localhost:8000/invite-bot?meeting_url=${encodeURIComponent(meetingUrl)}&project_id=${projectId}`, {
                 method: 'POST',
                 credentials: 'include'
             });
@@ -186,24 +192,7 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
         if (!result) return;
         setSyncing(true);
         try {
-            // 1. Create the meeting record with full MoM data
-            await createMeeting({
-                project_id: projectId,
-                title: result.mom.judul_meeting || 'Meeting Analysis',
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                duration: '60min',
-                source_type: source,
-                mom_summary: result.mom.poin_diskusi.join('\n'), // MeetingAccordion splits by \n
-                key_decisions: result.mom.keputusan_final,
-                action_items: result.tasks.filter(t => !t.completed).map(t => ({
-                    task: t.title,
-                    initials: t.pic.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??',
-                    deadline: t.due_date
-                }))
-            });
-
-            // 2. Create only uncompleted tasks on the Kanban board
+            // 1. Create only uncompleted tasks on the Kanban board
             for (const task of result.tasks) {
                 if (!task.completed) {
                     await createTask({
@@ -215,6 +204,12 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
                     });
                 }
             }
+            // 3. Mark the draft approval alert as resolved if it exists
+            if (result.alertId) {
+                const { alertService } = await import('../../services/alertService');
+                await alertService.resolveAlert(result.alertId);
+            }
+
             setSynced(true);
             setTimeout(() => setSynced(false), 3000);
         } catch (err) {
@@ -384,14 +379,28 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
                         <div className="flex gap-3">
                             <button
                                 onClick={syncToProject}
-                                disabled={syncing || synced}
+                                disabled={syncing || synced || result.tasks.length === 0}
                                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] transition-all shadow-lg ${synced
                                     ? 'bg-green-500 text-white'
                                     : 'bg-[#3B82F6] text-white hover:bg-[#2563EB] hover:scale-105 active:scale-95 disabled:opacity-50'
                                     }`}
                             >
-                                {syncing ? <Loader2 size={16} className="animate-spin" /> : synced ? <CheckCircle2 size={16} /> : <Save size={16} />}
-                                {syncing ? 'Syncing...' : synced ? 'Synced' : 'Sync to Project Board'}
+                                {syncing ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        <span>Syncing Board...</span>
+                                    </>
+                                ) : synced ? (
+                                    <>
+                                        <CheckCircle2 size={16} />
+                                        <span>Board Synced!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save size={16} />
+                                        <span>Commit Tasks to Board</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>

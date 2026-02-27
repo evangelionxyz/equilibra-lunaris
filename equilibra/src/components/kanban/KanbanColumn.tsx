@@ -3,16 +3,16 @@ import { CheckCircle2, Trash2 } from 'lucide-react';
 import { Badge } from '../../design-system/Badge';
 
 interface KanbanColumnProps {
-  id: string | number;
+  id: number;
   name: string;
   colorClass: string;
   statusText: string;
   taskCount: number;
-  onDropTask: (taskId: string | number, newBucketId: string | number, targetIndex?: number) => void;
-  onDragStartColumn?: (e: React.DragEvent<HTMLDivElement>, columnId: string | number) => void;
-  onDropColumn?: (e: React.DragEvent<HTMLDivElement>, targetColumnId: string | number) => void;
-  onAddTask?: (bucketId: string | number) => void;
-  onDeleteBucket?: (bucketId: string | number) => void;
+  onDropTask: (taskId: number, newBucketId: number, targetIndex?: number) => void;
+  onDragStartColumn?: (e: React.DragEvent<HTMLDivElement>, columnId: number) => void;
+  onDropColumn?: (e: React.DragEvent<HTMLDivElement>, targetColumnId: number) => void;
+  onAddTask?: (bucketId: number) => void;
+  onDeleteBucket?: (bucketId: number) => void;
   children: React.ReactNode;
 }
 
@@ -48,11 +48,11 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
     if (taskIdString) {
       e.preventDefault();
       e.stopPropagation();
-      onDropTask(taskIdString, id);
+      onDropTask(Number(taskIdString), id);
     } else if (columnIdString && onDropColumn) {
       e.preventDefault();
       e.stopPropagation();
-      onDropColumn(e, id);
+      onDropColumn(e, Number(columnIdString));
     }
   };
 

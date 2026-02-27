@@ -2,11 +2,11 @@ import { apiFetch } from "./apiClient";
 import type { Bucket } from "../models";
 
 export const bucketService = {
-    getBuckets: async (projectId: number | string): Promise<Bucket[]> => {
+    getBuckets: async (projectId: number): Promise<Bucket[]> => {
         return await apiFetch<Bucket[]>(`/projects/${projectId}/buckets`);
     },
 
-    getBucketById: async (projectId: number | string, bucketId: number): Promise<Bucket> => {
+    getBucketById: async (projectId: number, bucketId: number): Promise<Bucket> => {
         return await apiFetch<Bucket>(`/projects/${projectId}/buckets/${bucketId}`);
     },
 
@@ -17,14 +17,14 @@ export const bucketService = {
         });
     },
 
-    reorderBuckets: async (projectId: number | string, bucketIds: number[]): Promise<{ status: string; order: number[] }> => {
+    reorderBuckets: async (projectId: number, bucketIds: number[]): Promise<{ status: string; order: number[] }> => {
         return await apiFetch<{ status: string; order: number[] }>(`/projects/${projectId}/buckets/reorder`, {
             method: "PUT",
             body: JSON.stringify(bucketIds),
         });
     },
 
-    deleteBucket: async (projectId: number | string, bucketId: number | string): Promise<void> => {
+    deleteBucket: async (projectId: number, bucketId: number): Promise<void> => {
         await apiFetch(`/projects/${projectId}/buckets/${bucketId}`, {
             method: "DELETE",
         });

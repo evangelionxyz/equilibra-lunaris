@@ -16,7 +16,7 @@ const statusVariant = (status: string): 'critical' | 'warning' | 'default' => {
 };
 
 interface CriticalWatchlistProps {
-  onNavigate: (projectId: number | string) => void;
+  onNavigate: (projectId: number) => void;
 }
 
 export const CriticalWatchlist: React.FC<CriticalWatchlistProps> = ({ onNavigate }) => {

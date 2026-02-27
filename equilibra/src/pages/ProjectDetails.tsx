@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import type { TaskType, TaskStatus, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
-  projectId: number | string;
+  projectId: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,8 +39,8 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const [activeTab, setActiveTab] = useState('Overview');
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
-  const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | string | undefined>(undefined);
-  const [bucketToDelete, setBucketToDelete] = useState<string | number | null>(null);
+  const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | undefined>(undefined);
+  const [bucketToDelete, setBucketToDelete] = useState<number | null>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
 
@@ -57,27 +57,27 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const [newBucketName, setNewBucketName] = useState('');
   const [isCreatingBucket, setIsCreatingBucket] = useState(false);
 
-  const handleCreateTask = async (data: { project_id: string | number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: string | number }) => {
+  const handleCreateTask = async (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number }) => {
     await createTask(data);
   };
 
-  const handleUpdateTask = async (taskId: string | number, data: Partial<Task>) => {
+  const handleUpdateTask = async (taskId: number, data: Partial<Task>) => {
     await updateTask(taskId, data);
   };
 
-  const handleDropTask = async (taskId: string | number, newBucketId: string | number, targetTaskId?: string | number) => {
+  const handleDropTask = async (taskId: number, newBucketId: number, targetTaskId?: number) => {
     // Determine the task order within the target bucket based on where it was dropped
-    const bucketTasks = tasks.filter(t => String(t.bucket_id) === String(newBucketId)).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
-    const draggedTask = tasks.find(t => String(t.id) === String(taskId));
+    const bucketTasks = tasks.filter(t => t.bucket_id === newBucketId).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+    const draggedTask = tasks.find(t => t.id === taskId);
     if (!draggedTask) return;
 
     // Filter out the dragged task to avoid self-collision
-    const filteredTasks = bucketTasks.filter(t => String(t.id) !== String(taskId));
+    const filteredTasks = bucketTasks.filter(t => t.id !== taskId);
 
     // Calculate new position
     let newIndex = filteredTasks.length; // Default to end
     if (targetTaskId) {
-      const targetIndex = filteredTasks.findIndex(t => String(t.id) === String(targetTaskId));
+      const targetIndex = filteredTasks.findIndex(t => t.id === targetTaskId);
       if (targetIndex !== -1) {
         newIndex = targetIndex;
       }
@@ -87,7 +87,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     filteredTasks.splice(newIndex, 0, draggedTask);
 
     // Build reordered IDs
-    const taskIds = filteredTasks.map(t => String(t.id!));
+    const taskIds = filteredTasks.map(t => Number(t.id!));
 
     await reorderTasks(newBucketId, taskIds);
   };
@@ -190,11 +190,11 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
             ) : (
               <div className="flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar items-start">
                 {buckets.map(bucket => {
-                  const colTasks = tasks.filter(t => String(t.bucket_id) === String(bucket.id));
+                  const colTasks = tasks.filter(t => t.bucket_id === bucket.id);
                   return (
                     <KanbanColumn
                       key={bucket.id}
-                      id={bucket.id!.toString()}
+                      id={bucket.id!}
                       name={bucket.state}
                       colorClass={STATUS_COLORS[bucket.state] || 'bg-slate-500'}
                       statusText="ACTIVE"
@@ -202,25 +202,25 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                       onDropTask={handleDropTask}
                       onDragStartColumn={handleDragStartColumn}
                       onDropColumn={handleDropColumn}
-                      onAddTask={(bId) => { setSelectedBucketTarget(String(bId)); setShowTaskModal(true); }}
+                      onAddTask={(bId) => { setSelectedBucketTarget(bId); setShowTaskModal(true); }}
                       onDeleteBucket={(bId) => setBucketToDelete(bId)}
                     >
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">
                           <KanbanCard
-                            id={String(task.id!)}
+                            id={Number(task.id!)}
                             title={task.title}
                             type={task.type}
-                            weight={String(task.weight)}
+                            weight={task.weight}
                             assignee={task.lead_assignee_id ? 'JD' : undefined}
                             pr={!!task.prUrl}
                             warnStagnant={task.warnStagnant}
                             isSuggested={task.isSuggested}
                             onClick={() => setSelectedTaskForEdit(task)}
-                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(String(draggedTaskId), String(bucket.id!), targetTaskId ? String(targetTaskId) : undefined)}
+                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(draggedTaskId, bucket.id!, targetTaskId)}
                           />
                           <button
-                            onClick={() => deleteTask(String(task.id!))}
+                            onClick={() => deleteTask(Number(task.id!))}
                             className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 p-1 rounded bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                           >
                             <Trash2 size={10} />
@@ -228,6 +228,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                         </div>
                       ))}
                     </KanbanColumn>
+
                   );
                 })}
 
@@ -276,7 +277,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         {/* MoM & Meetings */}
         {activeTab === 'MoM & Meetings' && (
           <div className="space-y-6">
-            <MeetingIntelligenceTab projectId={projectId} />
+            <MeetingIntelligenceTab
+              projectId={projectId}
+              onMeetingCreated={createMeeting}
+            />
 
             <SurfaceCard
               title="Historical Meetings"

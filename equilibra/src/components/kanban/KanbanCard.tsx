@@ -5,16 +5,16 @@ import { Clock, GitPullRequest, MoreHorizontal, UserCircle2 } from 'lucide-react
 import type { TaskType } from '../../models';
 
 interface KanbanCardProps {
-  id: string | number;
+  id: number;
   title: string;
   type: TaskType;
-  weight: string | number;
+  weight: number;
   assignee?: string;
   status?: string;
   warnStagnant?: boolean;
   isSuggested?: boolean;
   pr?: boolean;
-  onDropTask?: (draggedTaskId: string | number, targetTaskId?: string | number) => void;
+  onDropTask?: (draggedTaskId: number, targetTaskId?: number) => void;
   onClick?: () => void;
 }
 
@@ -53,7 +53,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
     if (onDropTask) {
       const draggedId = e.dataTransfer.getData('taskId');
       if (draggedId) {
-        onDropTask(draggedId, id);
+        onDropTask(Number(draggedId), id);
       }
     }
   };

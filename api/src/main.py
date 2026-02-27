@@ -2,6 +2,7 @@ import sys
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
+from routers import auth, github, meetings, tasks
 from routers import auth, github, meetings, telegram
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -9,13 +10,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, github
 from services.database.database import router as db_router, create_pool, close_pool
 from services.database import users as _db_users
 from services.database import projects as _db_projects
 from services.database import buckets as _db_buckets
 from services.database import tasks as _db_tasks
 from services.database import project_member as _db_project_member
+from services.database import alerts as _db_alerts
+from services.database import activities as _db_activities
+from services.database import meetings as _db_meetings
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -45,6 +48,7 @@ app.include_router(auth.router)
 app.include_router(github.router)
 app.include_router(db_router)
 app.include_router(meetings.router)
+app.include_router(tasks.router)
 app.include_router(telegram.router)
 
 if __name__ == "__main__":

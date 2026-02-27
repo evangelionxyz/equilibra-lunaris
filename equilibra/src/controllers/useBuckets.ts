@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Bucket } from "../models";
 import { bucketService } from "../services/bucketService";
 
-export const useBuckets = (projectId: number | string) => {
+export const useBuckets = (projectId: number) => {
     const [buckets, setBuckets] = useState<Bucket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export const useBuckets = (projectId: number | string) => {
     );
 
     const deleteBucket = useCallback(
-        async (bucketId: number | string) => {
+        async (bucketId: number) => {
             try {
                 // Optimistic UI update
                 setBuckets(prev => prev.filter(b => String(b.id) !== String(bucketId)));
