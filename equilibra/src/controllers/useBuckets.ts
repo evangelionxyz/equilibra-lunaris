@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Bucket } from "../models";
 import { bucketService } from "../services/bucketService";
 
-export const useBuckets = (projectId: number | string | string) => {
+export const useBuckets = (projectId: number | string) => {
     const [buckets, setBuckets] = useState<Bucket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export const useBuckets = (projectId: number | string | string) => {
             try {
                 const nextOrderIdx = buckets.length > 0 ? Math.max(...buckets.map(b => b.order_idx || 0)) + 1 : 0;
                 const newBucket = await bucketService.createBucket({
-                    project_id: projectId,
+                    project_id: Number(projectId),
                     state: stateName,
                     order_idx: nextOrderIdx
                 });
@@ -69,12 +69,31 @@ export const useBuckets = (projectId: number | string | string) => {
         [projectId, buckets, fetchBuckets]
     );
 
+    const deleteBucket = useCallback(
+        async (bucketId: number | string) => {
+            try {
+                // Optimistic UI update
+                setBuckets(prev => prev.filter(b => String(b.id) !== String(bucketId)));
+
+                // API call
+                await bucketService.deleteBucket(projectId, bucketId);
+            } catch (err) {
+                console.error("Failed to delete bucket", err);
+                // Revert on error
+                fetchBuckets();
+                throw err;
+            }
+        },
+        [projectId, fetchBuckets]
+    );
+
     return {
         buckets,
         loading,
         error,
         createBucket,
         reorderBuckets,
+        deleteBucket,
         refreshBuckets: fetchBuckets
     };
 };

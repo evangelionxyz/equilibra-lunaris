@@ -3,7 +3,7 @@ import type { Meeting, MeetingSource } from "../models";
 import { meetingService } from "../services/meetingService";
 import { useToast } from "../design-system/Toast";
 
-export const useMeetings = (projectId: number | string | string) => {
+export const useMeetings = (projectId: number | string) => {
   const { showToast } = useToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);

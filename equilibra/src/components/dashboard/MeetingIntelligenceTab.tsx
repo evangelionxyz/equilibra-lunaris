@@ -26,7 +26,7 @@ interface AnalyzerResult {
 }
 
 interface MeetingIntelligenceTabProps {
-    projectId: number | string | string;
+    projectId: number | string;
 }
 
 export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ projectId }) => {

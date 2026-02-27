@@ -3,7 +3,7 @@ import type { Task } from "../models";
 import JSONBig from 'json-bigint';
 
 export const taskService = {
-  getTasksByProject: async (projectId: number | string | string): Promise<Task[]> => {
+  getTasksByProject: async (projectId: number | string): Promise<Task[]> => {
     const tasks = await apiFetch<Task[]>("/tasks");
     return tasks.filter((t) => String(t.project_id) === String(projectId));
   },
@@ -33,7 +33,7 @@ export const taskService = {
     });
   },
 
-  reorderTasks: async (projectId: number | string | string, bucketId: number | string, taskIds: (number | string)[]): Promise<{ status: string; order: (number | string)[]; bucket_id: number | string }> => {
+  reorderTasks: async (projectId: number | string, bucketId: number | string, taskIds: (number | string)[]): Promise<{ status: string; order: (number | string)[]; bucket_id: number | string }> => {
     return await apiFetch(`/projects/${projectId}/buckets/${bucketId}/tasks/reorder`, {
       method: "PUT",
       body: JSONBig.stringify(taskIds),
