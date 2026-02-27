@@ -1,21 +1,24 @@
+@import "tailwindcss";
+
 :root {
   /* Core Color Palette */
-  --cmd-app-bg: #0D1117;
-  --cmd-surface: #161B22;
-  --cmd-component: #21262D;
-  --cmd-border: #30363D;
-  --cmd-primary: #2F81F7;
+  --cmd-app-bg: #0d1117;
+  --cmd-surface: #161b22;
+  --cmd-component: #21262d;
+  --cmd-border: #30363d;
+  --cmd-primary: #2f81f7;
   --cmd-success: #238636;
-  --cmd-danger: #DA3633;
-  --cmd-warning: #D29922;
+  --cmd-danger: #da3633;
+  --cmd-warning: #d29922;
 
   /* Typography Hierarchy */
-  --cmd-font-stack: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --cmd-text-h1: #F0F6FC;
-  --cmd-text-h2: #F0F6FC;
-  --cmd-text-body: #C9D1D9;
-  --cmd-text-meta: #8B949E;
-  --cmd-text-mono: #E6EDF3;
+  --cmd-font-stack:
+    Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --cmd-text-h1: #f0f6fc;
+  --cmd-text-h2: #f0f6fc;
+  --cmd-text-body: #c9d1d9;
+  --cmd-text-meta: #8b949e;
+  --cmd-text-mono: #e6edf3;
   --cmd-scrollbar-track: var(--cmd-surface);
   --cmd-scrollbar-thumb: var(--cmd-border);
   --cmd-scrollbar-thumb-hover: #3b434d;
@@ -33,6 +36,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  margin: 0;
 }
 
 :root[data-theme="light"] {
@@ -100,16 +104,6 @@ body {
       fill 180ms ease,
       stroke 180ms ease;
   }
-}
-
-button {
-  border-radius: 0.45rem;
-  border: 1px solid #b8c2cf;
-  padding: 0.45rem 0.7rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background-color: #fff;
-  cursor: pointer;
 }
 
 @keyframes spin {

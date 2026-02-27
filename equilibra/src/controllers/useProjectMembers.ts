@@ -1,0 +1,24 @@
+import { useState, useEffect } from "react";
+import type { ProjectMember } from "../models";
+import { memberService } from "../services/mockService";
+
+export const useProjectMembers = (projectId: number) => {
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    memberService.getMembersByProject(projectId).then((data) => {
+      if (isMounted) {
+        setMembers(data);
+        setLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
+
+  return { members, loading };
+};
