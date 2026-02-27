@@ -61,20 +61,41 @@ export const useTasks = (projectId?: number) => {
 
   const updateTask = useCallback(
     async (id: string | number, data: Partial<Task>) => {
-      // Backend update not fully implemented, but updating local state for UI
-      setTasks((prev) =>
-        prev.map((t) => (String(t.id) === String(id) ? { ...t, ...data } : t)),
-      );
-      showToast("Task updated locally", "info");
-      return tasks.find((t) => String(t.id) === String(id))!;
+      try {
+        // Optimistic local update
+        setTasks((prev) =>
+          prev.map((t) => (String(t.id) === String(id) ? { ...t, ...data } : t)),
+        );
+
+        const updated = await taskService.updateTask(id, data);
+        showToast("Task updated", "success");
+        return updated;
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to update task", "error");
+        // Rollback on failure by refetching
+        fetchTasks();
+        throw err;
+      }
     },
-    [tasks],
+    [fetchTasks],
   );
 
   const deleteTask = useCallback(async (id: string | number) => {
-    // Assuming sequential local update if backend DELETE not ready
-    setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
-  }, []);
+    try {
+      // Optimistic local update
+      setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
+
+      await taskService.deleteTask(id);
+      showToast("Task deleted", "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to delete task", "error");
+      // Rollback on failure by refetching
+      fetchTasks();
+      throw err;
+    }
+  }, [fetchTasks]);
 
   const reorderTasks = useCallback(
     async (bucketId: string | number, taskIds: (string | number)[]) => {

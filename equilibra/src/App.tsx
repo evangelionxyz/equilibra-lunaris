@@ -40,12 +40,12 @@ function ProjectDetailsPageWrapper() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  if (!projectId || isNaN(Number(projectId))) {
+  if (!projectId) {
     navigate('/workspaces', { replace: true });
     return null;
   }
 
-  return <ProjectDetailsPage projectId={Number(projectId)} />;
+  return <ProjectDetailsPage projectId={String(projectId)} />;
 }
 
 import { ToastProvider } from './design-system/Toast';

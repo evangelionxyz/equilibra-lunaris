@@ -21,7 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import type { TaskType, TaskStatus, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
-  projectId: number;
+  projectId: number | string | string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,7 +38,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const [activeTab, setActiveTab] = useState('Overview');
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
-  const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | undefined>(undefined);
+  const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | string | undefined>(undefined);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
 
@@ -85,7 +85,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     filteredTasks.splice(newIndex, 0, draggedTask);
 
     // Build reordered IDs
-    const taskIds = filteredTasks.map(t => t.id!).map(id => typeof id === 'string' ? Number(id) : id);
+    const taskIds = filteredTasks.map(t => String(t.id!));
 
     await reorderTasks(newBucketId, taskIds);
   };
@@ -112,11 +112,11 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
 
   const handleDropColumn = async (e: React.DragEvent<HTMLDivElement>, targetColumnId: string | number) => {
     e.stopPropagation();
-    const draggedColumnId = Number(e.dataTransfer.getData('columnId'));
-    if (isNaN(draggedColumnId) || draggedColumnId === targetColumnId) return;
+    const draggedColumnId = e.dataTransfer.getData('columnId');
+    if (!draggedColumnId || String(draggedColumnId) === String(targetColumnId)) return;
 
-    const oldIndex = buckets.findIndex(b => b.id === draggedColumnId);
-    const newIndex = buckets.findIndex(b => b.id === targetColumnId);
+    const oldIndex = buckets.findIndex(b => String(b.id) === String(draggedColumnId));
+    const newIndex = buckets.findIndex(b => String(b.id) === String(targetColumnId));
 
     if (oldIndex === -1 || newIndex === -1) return;
 
@@ -201,7 +201,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                       onDropTask={handleDropTask}
                       onDragStartColumn={handleDragStartColumn}
                       onDropColumn={handleDropColumn}
-                      onAddTask={(bId) => { setSelectedBucketTarget(Number(bId)); setShowTaskModal(true); }}
+                      onAddTask={(bId) => { setSelectedBucketTarget(String(bId)); setShowTaskModal(true); }}
                     >
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">
@@ -215,10 +215,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                             warnStagnant={task.warnStagnant}
                             isSuggested={task.isSuggested}
                             onClick={() => setSelectedTaskForEdit(task)}
-                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(Number(draggedTaskId), Number(bucket.id!), targetTaskId ? Number(targetTaskId) : undefined)}
+                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(String(draggedTaskId), String(bucket.id!), targetTaskId ? String(targetTaskId) : undefined)}
                           />
                           <button
-                            onClick={() => deleteTask(Number(task.id!))}
+                            onClick={() => deleteTask(String(task.id!))}
                             className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 p-1 rounded bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                           >
                             <Trash2 size={10} />

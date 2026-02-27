@@ -7,7 +7,7 @@ interface TaskDetailModalProps {
     buckets: Bucket[];
     members: ProjectMember[];
     onClose: () => void;
-    onUpdate: (taskId: number, data: Partial<Task>) => Promise<void>;
+    onUpdate: (taskId: number | string, data: Partial<Task>) => Promise<void>;
 }
 
 const TASK_TYPES: TaskType[] = ['CODE', 'REQUIREMENT', 'DESIGN', 'NON-CODE', 'OTHER'];
@@ -40,13 +40,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         if (!title.trim() || !task.id) return;
 
         setSaving(true);
-        await onUpdate(Number(task.id), {
+        await onUpdate(String(task.id), {
             title: title.trim(),
             description: description.trim() || undefined,
             type,
             weight: Number(weight),
-            bucket_id: bucketId ? Number(bucketId) : undefined,
-            lead_assignee_id: leadAssigneeId ? Number(leadAssigneeId) : undefined,
+            bucket_id: bucketId ? String(bucketId) : undefined,
+            lead_assignee_id: leadAssigneeId ? String(leadAssigneeId) : undefined,
             branch_name: branchName.trim() || undefined,
         });
         setSaving(false);
@@ -131,7 +131,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><Activity size={14} /> State Group</label>
                             <select
                                 value={bucketId ? String(bucketId) : ''}
-                                onChange={(e) => setBucketId(e.target.value ? Number(e.target.value) : undefined)}
+                                onChange={(e) => setBucketId(e.target.value ? String(e.target.value) : undefined)}
                                 className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#3B82F6] transition-colors"
                             >
                                 <option value="" disabled>Select Bucket...</option>
@@ -170,7 +170,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lead Assignee</label>
                             <select
                                 value={leadAssigneeId ? String(leadAssigneeId) : ''}
-                                onChange={(e) => setLeadAssigneeId(e.target.value ? Number(e.target.value) : undefined)}
+                                onChange={(e) => setLeadAssigneeId(e.target.value ? String(e.target.value) : undefined)}
                                 className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#3B82F6] transition-colors"
                             >
                                 <option value="">Unassigned</option>
