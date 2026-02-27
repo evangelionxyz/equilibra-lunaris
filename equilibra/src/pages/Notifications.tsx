@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { Bell, Clock, CheckCircle2, ArrowRight, Sparkles, AlertTriangle, X, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '../design-system/Badge';
 import { useAlerts } from '../controllers/useAlerts';
 import { useProjects } from '../controllers/useProjects';
 import type { Alert } from '../models';
 
-interface NotificationsPageProps {
-  setPage: (page: string) => void;
-  setProject: (id: number) => void;
-}
-
-export const NotificationsPage: React.FC<NotificationsPageProps> = ({ setPage, setProject }) => {
+export const NotificationsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { alerts, loading, resolveAlert } = useAlerts();
   const { leadProjects, collaboratingProjects } = useProjects();
   const allProjects = [...leadProjects, ...collaboratingProjects];
@@ -32,8 +29,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ setPage, s
 
   const handleNavigateToProject = (alert: Alert) => {
     if (alert.project_id) {
-      setProject(alert.project_id);
-      setPage('project');
+      navigate(`/projects/${alert.project_id}`);
     }
     setSelectedAlert(null);
   };

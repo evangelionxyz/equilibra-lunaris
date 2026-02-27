@@ -5,23 +5,13 @@ import { useProjects } from '../controllers/useProjects';
 import { ProjectFormModal } from '../components/modals/ProjectFormModal';
 import type { Project } from '../models';
 
-interface WorkspacesPageProps {
-  setPage: (page: string) => void;
-  setProject: (id: number) => void;
-}
+import { useNavigate } from 'react-router-dom';
 
 type ModalMode = 'create' | 'edit' | null;
 
-const statusVariant = (status?: string): 'critical' | 'success' | 'primary' | 'default' => {
-  if (!status) return 'default';
-  if (status === 'Blocked' || status === 'At Risk') return 'critical';
-  if (status === 'On Track' || status === 'Healthy Flow') return 'success';
-  if (status === 'Heavy Load') return 'primary';
-  return 'default';
-};
-
-export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProject }) => {
+export const WorkspacesPage: React.FC = () => {
   const { projects, loading, createProject, deleteProject } = useProjects();
+  const navigate = useNavigate();
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editTarget, setEditTarget] = useState<Partial<Project>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -70,7 +60,7 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {loading ? (
-            <div className="text-slate-500 text-[12px]">Scanning nodes...</div>
+            <div className="text-slate-500 text-[12px]">Loading projects...</div>
           ) : projects.length === 0 ? (
             <div className="col-span-2 text-center py-16 text-slate-500 text-[13px] border border-dashed border-[#374151] rounded-xl">
               No projects. <button onClick={openCreate} className="text-[#3B82F6] hover:underline">Create one.</button>
@@ -80,10 +70,8 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
               <ProjectCard
                 title={p.name}
                 desc={p.issue || "System operating within normal parameters."}
-                tag={p.status ?? 'Unknown'}
-                variant={statusVariant(p.status)}
                 progress={p.progress}
-                onClick={() => { setProject(p.id!); setPage('project'); }}
+                onClick={() => navigate(`/projects/${p.id}`)}
               />
               <button
                 onClick={() => handleDelete(p.id!)}

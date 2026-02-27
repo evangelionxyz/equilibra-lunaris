@@ -1,35 +1,46 @@
 import React, { useState } from 'react';
 import { useTasks } from '../controllers/useTasks';
 import { useMeetings } from '../controllers/useMeetings';
+import { useBuckets } from '../controllers/useBuckets';
 import { LayoutDashboard, Briefcase, Video, Settings, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { ProjectOverviewPM, ProjectOverviewDev } from '../components/dashboard/ProjectOverviews';
+import { ProjectSettingsTab } from '../components/dashboard/ProjectSettingsTab';
 import { MeetingAccordion } from '../components/dashboard/MeetingAccordion';
 import { MeetingIntelligenceTab } from '../components/dashboard/MeetingIntelligenceTab';
 import { KanbanCard } from '../components/kanban/KanbanCard';
 import { KanbanColumn } from '../components/kanban/KanbanColumn';
+import { TaskDetailModal } from '../components/modals/TaskDetailModal';
+import { ConfirmModal } from '../components/modals/ConfirmModal';
 import { SurfaceCard } from '../design-system/SurfaceCard';
 import { TaskFormModal } from '../components/modals/TaskFormModal';
 import { MeetingFormModal } from '../components/modals/MeetingFormModal';
 import { useCurrentUserRole } from '../controllers/useCurrentUserRole';
+import { useProjectMembers } from '../controllers/useProjectMembers';
 import { projectService } from '../services/projectService';
-import type { TaskType, TaskStatus, Project } from '../models';
+import { useNavigate } from 'react-router-dom';
+
+import type { TaskType, TaskStatus, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
   projectId: number;
 }
 
-const KANBAN_COLUMNS = [
-  { id: 'DRAFT', name: 'DRAFT', color: 'bg-slate-500', desc: 'AI Output / PM Verify', status: 'INACTIVE' },
-  { id: 'PENDING', name: 'PENDING', color: 'bg-[#F59E0B]', desc: 'Needs Assignee', status: 'INACTIVE' },
-  { id: 'TODO', name: 'TODO', color: 'bg-[#3B82F6]', desc: 'Ready for Devs', status: 'WAITING' },
-  { id: 'ONGOING', name: 'ONGOING', color: 'bg-[#16A34A]', desc: 'Active Development', status: 'RUNNING' },
-  { id: 'ON REVIEW', name: 'ON REVIEW', color: 'bg-[#8B5CF6]', desc: 'GitHub PR Open', status: 'PAUSED' },
-  { id: 'COMPLETED', name: 'COMPLETED', color: 'bg-slate-400', desc: 'Merged & Done', status: 'DONE' },
-] as const;
+const STATUS_COLORS: Record<string, string> = {
+  'DRAFT': 'bg-slate-500',
+  'PENDING': 'bg-[#F59E0B]',
+  'TODO': 'bg-[#3B82F6]',
+  'ONGOING': 'bg-[#16A34A]',
+  'ON REVIEW': 'bg-[#8B5CF6]',
+  'COMPLETED': 'bg-slate-400',
+};
 
 export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Overview');
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
+  const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | undefined>(undefined);
+  const [bucketToDelete, setBucketToDelete] = useState<number | null>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
 
@@ -38,19 +49,85 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   }, [projectId]);
 
   const { role, loading: roleLoading } = useCurrentUserRole(projectId);
-  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask } = useTasks(projectId);
+  const { members } = useProjectMembers(projectId);
+  const { buckets, loading: bucketsLoading, createBucket, reorderBuckets, deleteBucket } = useBuckets(projectId);
+  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask, reorderTasks } = useTasks(projectId);
   const { meetings, loading: meetingsLoading, createMeeting, deleteMeeting } = useMeetings(projectId);
 
-  const handleCreateTask = async (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus }) => {
+  const [newBucketName, setNewBucketName] = useState('');
+  const [isCreatingBucket, setIsCreatingBucket] = useState(false);
+
+  const handleCreateTask = async (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number }) => {
     await createTask(data);
   };
 
-  const handleDropTask = async (taskId: number, newStatus: string) => {
-    await updateTask(taskId, { status: newStatus as TaskStatus });
+  const handleUpdateTask = async (taskId: number, data: Partial<Task>) => {
+    await updateTask(taskId, data);
+  };
+
+  const handleDropTask = async (taskId: number, newBucketId: number, targetTaskId?: number) => {
+    // Determine the task order within the target bucket based on where it was dropped
+    const bucketTasks = tasks.filter(t => t.bucket_id === newBucketId).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+    const draggedTask = tasks.find(t => t.id === taskId);
+    if (!draggedTask) return;
+
+    // Filter out the dragged task to avoid self-collision
+    const filteredTasks = bucketTasks.filter(t => t.id !== taskId);
+
+    // Calculate new position
+    let newIndex = filteredTasks.length; // Default to end
+    if (targetTaskId) {
+      const targetIndex = filteredTasks.findIndex(t => t.id === targetTaskId);
+      if (targetIndex !== -1) {
+        newIndex = targetIndex;
+      }
+    }
+
+    // Insert into new array
+    filteredTasks.splice(newIndex, 0, draggedTask);
+
+    // Build reordered IDs
+    const taskIds = filteredTasks.map(t => Number(t.id!));
+
+    await reorderTasks(newBucketId, taskIds);
   };
 
   const handleCreateMeeting = async (data: { project_id: number; title: string; date: string; time: string; duration?: string }) => {
     await createMeeting(data);
+  };
+
+  const handleCreateBucket = async () => {
+    if (!newBucketName.trim()) return;
+    try {
+      await createBucket(newBucketName.trim());
+      setNewBucketName('');
+      setIsCreatingBucket(false);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to create bucket');
+    }
+  };
+
+  const handleDragStartColumn = (e: React.DragEvent<HTMLDivElement>, columnId: string | number) => {
+    e.dataTransfer.setData('columnId', columnId.toString());
+  };
+
+  const handleDropColumn = async (e: React.DragEvent<HTMLDivElement>, targetColumnId: string | number) => {
+    e.stopPropagation();
+    const draggedColumnId = e.dataTransfer.getData('columnId');
+    if (!draggedColumnId || String(draggedColumnId) === String(targetColumnId)) return;
+
+    const oldIndex = buckets.findIndex(b => String(b.id) === String(draggedColumnId));
+    const newIndex = buckets.findIndex(b => String(b.id) === String(targetColumnId));
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newBuckets = [...buckets];
+    const [removed] = newBuckets.splice(oldIndex, 1);
+    newBuckets.splice(newIndex, 0, removed);
+
+    // Call reorder api with new IDs
+    await reorderBuckets(newBuckets.map(b => b.id!));
   };
 
   const tabs = ['Overview', 'Tasks', 'MoM & Meetings', 'Settings'];
@@ -59,7 +136,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     <div className="animate-in fade-in duration-500 flex flex-col h-full max-w-[1600px] mx-auto w-full">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button className="w-10 h-10 rounded-lg bg-[#151A22] border border-[#374151] flex items-center justify-center text-slate-400 hover:text-white">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-10 h-10 rounded-lg bg-[#151A22] border border-[#374151] flex items-center justify-center text-slate-400 hover:text-white"
+        >
           <ChevronLeft size={20} />
         </button>
         <div>
@@ -92,7 +172,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         {/* Overview */}
         {activeTab === 'Overview' && (
           roleLoading ? <div className="text-slate-500 py-10 text-center">Resolving permissions...</div> :
-            role === 'MANAGER' ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
+            role === 'Owner' ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
         )}
 
         {/* Tasks — Kanban */}
@@ -103,45 +183,44 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                 <h2 className="text-[18px] font-bold text-white">Task Flow Pipeline</h2>
                 <p className="text-[12px] text-slate-400 mt-1">6-Stage Flow System • DRAFT → COMPLETED</p>
               </div>
-              <button
-                onClick={() => setShowTaskModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#3B82F6] text-white text-[12px] font-semibold hover:bg-[#2563EB] transition-all"
-              >
-                <Plus size={14} /> New Task
-              </button>
             </div>
 
-            {tasksLoading ? (
+            {tasksLoading || bucketsLoading ? (
               <div className="flex-1 flex items-center justify-center text-slate-500 text-[14px]">Loading board state...</div>
             ) : (
               <div className="flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar items-start">
-                {KANBAN_COLUMNS.map(col => {
-                  const colTasks = tasks.filter(t => t.status === col.id);
+                {buckets.map(bucket => {
+                  const colTasks = tasks.filter(t => t.bucket_id === bucket.id);
                   return (
                     <KanbanColumn
-                      key={col.id}
-                      id={col.id}
-                      name={col.name}
-                      colorClass={col.color}
-                      description={col.desc}
-                      statusText={col.status}
+                      key={bucket.id}
+                      id={bucket.id!}
+                      name={bucket.state}
+                      colorClass={STATUS_COLORS[bucket.state] || 'bg-slate-500'}
+                      statusText="ACTIVE"
                       taskCount={colTasks.length}
                       onDropTask={handleDropTask}
+                      onDragStartColumn={handleDragStartColumn}
+                      onDropColumn={handleDropColumn}
+                      onAddTask={(bId) => { setSelectedBucketTarget(bId); setShowTaskModal(true); }}
+                      onDeleteBucket={(bId) => setBucketToDelete(bId)}
                     >
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">
                           <KanbanCard
-                            id={task.id!}
+                            id={Number(task.id!)}
                             title={task.title}
                             type={task.type}
-                            weight={String(task.weight)}
+                            weight={task.weight}
                             assignee={task.lead_assignee_id ? 'JD' : undefined}
                             pr={!!task.prUrl}
                             warnStagnant={task.warnStagnant}
                             isSuggested={task.isSuggested}
+                            onClick={() => setSelectedTaskForEdit(task)}
+                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(draggedTaskId, bucket.id!, targetTaskId)}
                           />
                           <button
-                            onClick={() => deleteTask(task.id!)}
+                            onClick={() => deleteTask(Number(task.id!))}
                             className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 p-1 rounded bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                           >
                             <Trash2 size={10} />
@@ -149,8 +228,47 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                         </div>
                       ))}
                     </KanbanColumn>
+
                   );
                 })}
+
+                {/* Add New Bucket Column */}
+                <div className="min-w-[280px] w-[280px]">
+                  {!isCreatingBucket ? (
+                    <button
+                      onClick={() => setIsCreatingBucket(true)}
+                      className="w-full h-12 border border-dashed border-[#374151] rounded-xl flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:border-[#3B82F6] hover:bg-[#151A22] transition-all text-[13px] font-semibold"
+                    >
+                      <Plus size={16} /> Add Column
+                    </button>
+                  ) : (
+                    <div className="border border-[#3B82F6] rounded-xl bg-[#151A22] p-3 space-y-3">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={newBucketName}
+                        onChange={e => setNewBucketName(e.target.value)}
+                        placeholder="Column Name"
+                        className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:border-[#3B82F6] focus:outline-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleCreateBucket}
+                          disabled={!newBucketName.trim()}
+                          className="flex-1 bg-[#3B82F6] text-white text-[12px] font-bold py-1.5 rounded-lg hover:bg-[#2563EB] disabled:opacity-50 transition-colors"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => { setIsCreatingBucket(false); setNewBucketName(''); }}
+                          className="flex-1 bg-[#1F2937] text-white text-[12px] font-bold py-1.5 rounded-lg hover:bg-[#374151] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -194,6 +312,11 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
             </SurfaceCard>
           </div>
         )}
+
+        {/* Settings */}
+        {activeTab === 'Settings' && (
+          <ProjectSettingsTab projectId={projectId} />
+        )}
       </div>
 
       {/* Modals */}
@@ -201,7 +324,8 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         <TaskFormModal
           projectId={projectId}
           title="New Task"
-          onClose={() => setShowTaskModal(false)}
+          initial={{ bucket_id: selectedBucketTarget }}
+          onClose={() => { setShowTaskModal(false); setSelectedBucketTarget(undefined); }}
           onSubmit={handleCreateTask}
         />
       )}
@@ -210,6 +334,33 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
           projectId={projectId}
           onClose={() => setShowMeetingModal(false)}
           onSubmit={handleCreateMeeting}
+        />
+      )}
+      {selectedTaskForEdit && (
+        <TaskDetailModal
+          task={selectedTaskForEdit}
+          buckets={buckets}
+          members={members}
+          onClose={() => setSelectedTaskForEdit(null)}
+          onUpdate={handleUpdateTask}
+        />
+      )}
+
+      {bucketToDelete && (
+        <ConfirmModal
+          title="Delete Column"
+          message="Are you sure you want to delete this column? This action cannot be undone and only works if the column is empty."
+          confirmLabel="Delete Column"
+          onConfirm={async () => {
+            try {
+              await deleteBucket(bucketToDelete);
+              setBucketToDelete(null);
+            } catch (err) {
+              setBucketToDelete(null);
+            }
+          }}
+          onCancel={() => setBucketToDelete(null)}
+          variant="danger"
         />
       )}
     </div>

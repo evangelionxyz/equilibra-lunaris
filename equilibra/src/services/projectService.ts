@@ -1,6 +1,6 @@
 import { apiFetch } from "./apiClient";
 import projectMemberService from "./projectMemberService";
-import type { Project, Role } from "../models";
+import type { Project } from "../models";
 
 export const projectService = {
   getProjects: async (): Promise<Project[]> => {
@@ -23,7 +23,10 @@ export const projectService = {
   },
 
   // Create a project, then create a project_member for the owner (frontend-driven)
-  createProjectWithOwner: async (data: Project, ownerUserId?: number): Promise<Project> => {
+  createProjectWithOwner: async (
+    data: Project,
+    ownerUserId?: number,
+  ): Promise<Project> => {
     const project = await apiFetch<Project>("/projects", {
       method: "POST",
       body: JSON.stringify(data),
@@ -32,12 +35,10 @@ export const projectService = {
     if (ownerUserId && project && project.id) {
       await projectMemberService.createMember(project.id, {
         user_id: ownerUserId,
-        role: "Owner" as Role,
+        role: "Owner",
         max_capacity: 100,
         current_load: 0,
       });
-    } else {
-      console.log("WOWOWOWOWOWWOOW");
     }
 
     return project;
