@@ -3,7 +3,7 @@ import type { Task, TaskType, TaskStatus } from "../models";
 import { taskService } from "../services/taskService";
 import { useToast } from "../design-system/Toast";
 
-export const useTasks = (projectId?: number) => {
+export const useTasks = (projectId?: string | number) => {
   const { showToast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +38,12 @@ export const useTasks = (projectId?: number) => {
 
   const createTask = useCallback(
     async (data: {
-      project_id: number;
+      project_id: number | string;
       title: string;
       type: TaskType;
       weight: number;
       status?: TaskStatus;
-      bucket_id?: number;
+      bucket_id?: number | string;
     }) => {
       try {
         const created = await taskService.createTask(data);
@@ -60,7 +60,7 @@ export const useTasks = (projectId?: number) => {
   );
 
   const updateTask = useCallback(
-    async (id: number, data: Partial<Task>) => {
+    async (id: string | number, data: Partial<Task>) => {
       try {
         // Optimistic local update
         setTasks((prev) =>
@@ -81,7 +81,7 @@ export const useTasks = (projectId?: number) => {
     [fetchTasks],
   );
 
-  const deleteTask = useCallback(async (id: number) => {
+  const deleteTask = useCallback(async (id: string | number) => {
     try {
       // Optimistic local update
       setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
@@ -98,7 +98,7 @@ export const useTasks = (projectId?: number) => {
   }, [fetchTasks]);
 
   const reorderTasks = useCallback(
-    async (bucketId: number, taskIds: (number)[]) => {
+    async (bucketId: string | number, taskIds: (string | number)[]) => {
       try {
         if (!projectId) return;
 

@@ -10,7 +10,7 @@ interface TaskSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   alertId: number;
-  projectId: number;
+  projectId: number | string;
   extractedTasks: ExtractedTask[];
   members: ProjectMember[];
   onSuccess?: () => void;
@@ -172,11 +172,10 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
               <button
                 key={idx}
                 onClick={() => toggle(idx)}
-                className={`w-full text-left rounded-xl border p-4 transition-all duration-150 flex gap-3 group ${
-                  selected
+                className={`w-full text-left rounded-xl border p-4 transition-all duration-150 flex gap-3 group ${selected
                     ? 'bg-[#151A22] border-[#4F46E5]/60 shadow-[0_0_0_1px_rgba(79,70,229,0.2)]'
                     : 'bg-[#0D1017] border-[#1F2937] hover:border-[#374151]'
-                }`}
+                  }`}
               >
                 {/* Checkbox icon */}
                 <div className="mt-0.5 flex-shrink-0">
@@ -223,9 +222,8 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
                       <select
                         value={assignees[idx] || ''}
                         onChange={e => handleAssigneeChange(idx, Number(e.target.value))}
-                        className={`w-full bg-[#1F2937] border ${
-                          !assignees[idx] ? 'border-[#EF4444]' : 'border-[#374151]'
-                        } text-white text-[12px] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#8B5CF6] transition-colors`}
+                        className={`w-full bg-[#1F2937] border ${!assignees[idx] ? 'border-[#EF4444]' : 'border-[#374151]'
+                          } text-white text-[12px] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#8B5CF6] transition-colors`}
                       >
                         <option value="" disabled>Select Assignee...</option>
                         {members.map(m => (

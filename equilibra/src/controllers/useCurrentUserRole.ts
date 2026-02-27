@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 // Role was removed from models
 import { userService } from "../services/userService";
 
-export const useCurrentUserRole = (projectId: number | null) => {
+export const useCurrentUserRole = (projectId: string | number | null) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

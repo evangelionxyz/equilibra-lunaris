@@ -155,7 +155,7 @@ def db_delete_bucket(project_id: int, bucket_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         # Check if tasks are in the bucket
-        cur.execute("SELECT COUNT(*) as count FROM public.tasks WHERE bucket_id = %s AND is_deleted = False;", (bucket_id,))
+        cur.execute("SELECT COUNT(*) as count FROM public.tasks WHERE bucket_id = %s AND is_deleted IS NOT TRUE;", (bucket_id,))
         count = cur.fetchone()['count']
         if count > 0:
              raise HTTPException(status_code=400, detail="Cannot delete bucket with active tasks. Please move or delete tasks first.")

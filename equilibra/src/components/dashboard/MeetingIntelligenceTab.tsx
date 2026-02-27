@@ -26,7 +26,7 @@ interface AnalyzerResult {
 }
 
 interface MeetingIntelligenceTabProps {
-    projectId: number;
+    projectId: string | number;
     onMeetingCreated?: (data: any) => Promise<any>;
 }
 
@@ -105,7 +105,7 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('project_id', projectId.toString());
+        formData.append('project_id', String(projectId));
 
         try {
             // Hitting backend directly to avoid Vite proxy multipart form drop bugs

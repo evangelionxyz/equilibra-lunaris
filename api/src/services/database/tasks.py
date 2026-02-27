@@ -102,7 +102,7 @@ def db_get_tasks():
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT * FROM public.tasks;")
+        cur.execute("SELECT * FROM public.tasks WHERE is_deleted IS NOT TRUE;")
         rows = cur.fetchall()
         return rows
     finally:

@@ -5,7 +5,7 @@ import { Clock, GitPullRequest, MoreHorizontal, UserCircle2 } from 'lucide-react
 import type { TaskType } from '../../models';
 
 interface KanbanCardProps {
-  id: number;
+  id: string | number;
   title: string;
   type: TaskType;
   weight: number;
@@ -14,8 +14,9 @@ interface KanbanCardProps {
   warnStagnant?: boolean;
   isSuggested?: boolean;
   pr?: boolean;
-  onDropTask?: (draggedTaskId: number, targetTaskId?: number) => void;
+  onDropTask?: (draggedTaskId: string | number, targetTaskId?: string | number) => void;
   onClick?: () => void;
+  description?: string;
 }
 
 export const KanbanCard: React.FC<KanbanCardProps> = ({
@@ -28,7 +29,8 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
   isSuggested,
   pr,
   onDropTask,
-  onClick
+  onClick,
+  description
 }) => {
   const [isOver, setIsOver] = React.useState(false);
 
@@ -53,7 +55,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
     if (onDropTask) {
       const draggedId = e.dataTransfer.getData('taskId');
       if (draggedId) {
-        onDropTask(Number(draggedId), id);
+        onDropTask(draggedId, id);
       }
     }
   };
@@ -71,7 +73,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
         } transition-all cursor-grab active:cursor-grabbing`}
     >
       <div className="text-white text-[13px] font-semibold leading-snug">{title}</div>
-      <p className="text-[10px] text-slate-400">Add theme switcher to user settings and sync with system preferences.</p>
+      <p className="text-[10px] text-slate-400 line-clamp-2">{description || 'No description provided.'}</p>
 
       <div className="flex gap-2 flex-wrap mt-1">
         <Badge variant={type === 'CODE' ? 'primary' : 'default'} className="!py-0.5 !px-1.5 !text-[8px]">

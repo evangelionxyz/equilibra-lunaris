@@ -11,8 +11,8 @@ export type TaskType = "CODE" | "REQUIREMENT" | "DESIGN" | "OTHER" | "NON-CODE";
 export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
 
 export interface Bucket {
-  id?: number;
-  project_id: number;
+  id?: number | string;
+  project_id: number | string;
   state: string;
   order_idx: number;
   is_deleted?: boolean;
@@ -37,7 +37,7 @@ export interface UserAlias {
 }
 
 export interface Project {
-  id?: number;
+  id?: number | string;
   name: string;
   gh_repo_url: string[];
   description?: string;
@@ -49,15 +49,15 @@ export interface Project {
   tasksPending?: number;
   is_deleted?: boolean;
   roles?: string[];
-  completed_bucket_id?: number;
-  in_review_bucket_id?: number;
-  todo_bucket_id?: number;
+  completed_bucket_id?: number | string;
+  in_review_bucket_id?: number | string;
+  todo_bucket_id?: number | string;
 }
 
 export interface ProjectMember {
-  id?: number;
-  user_id: number;
-  project_id: number;
+  id?: number | string;
+  user_id: number | string;
+  project_id: number | string;
   role: string;
   kpi_score: number; // VISIBLE TIER
   max_capacity: number;
@@ -66,8 +66,8 @@ export interface ProjectMember {
 }
 
 export interface Activity {
-  id?: number;
-  project_id: number;
+  id?: number | string;
+  project_id: number | string;
   user_name: string;
   action: string; // e.g., 'pushed', 'moved', 'generated'
   target: string; // e.g., 'auth-v2', 'Task A to QA'
@@ -75,8 +75,8 @@ export interface Activity {
 }
 
 export interface ProjectMetric {
-  id?: number;
-  project_id: number;
+  id?: number | string;
+  project_id: number | string;
   label: string; // e.g., 'Code Review Cycle'
   value: string; // e.g., '48h'
   progress: number; // 0-100
@@ -85,15 +85,15 @@ export interface ProjectMetric {
 }
 
 export interface UserProjectStats {
-  user_id: number;
-  project_id: number;
+  user_id: number | string;
+  project_id: number | string;
   points_completed: number;
   velocity_percentile: number;
 }
 
 export interface Meeting {
-  id?: number;
-  project_id: number;
+  id?: number | string;
+  project_id: number | string;
   source_type: MeetingSource;
   source_reference?: string;
   status?: MeetingStatus;
@@ -129,6 +129,7 @@ export interface Task {
   warnStagnant?: boolean;
   isSuggested?: boolean;
   prUrl?: string;
+  is_deleted?: boolean;
 }
 
 export interface TaskAssignee {
@@ -137,9 +138,9 @@ export interface TaskAssignee {
 }
 
 export interface Alert {
-  id?: number;
-  user_id: number;
-  project_id: number;
+  id?: number | string;
+  user_id: number | string;
+  project_id: number | string;
   title: string;
   description: string;
   type: AlertType;
