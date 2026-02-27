@@ -1,10 +1,21 @@
-const BASE_URL = "/api";
+const BASE_URL = "http://localhost:8000";
+
+// Map to cleanly deduplicate concurrent identical GET requests
+const pendingGetRequests = new Map<string, Promise<any>>();
 
 export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+
+  const method = (options.method || "GET").toUpperCase();
+  const cacheKey = method === "GET" ? url : null;
+
+  // Deduplicate identical simultaneous GET requests to prevent "multiple getter" loops and StrictMode duplicate calls
+  if (cacheKey && pendingGetRequests.has(cacheKey)) {
+    return pendingGetRequests.get(cacheKey) as Promise<T>;
+  }
 
   const defaultHeaders = {
     "Content-Type": "application/json",
@@ -19,20 +30,34 @@ export async function apiFetch<T>(
     },
   };
 
-  try {
-    const response = await fetch(url, config);
+  const fetchPromise = (async () => {
+    try {
+      const response = await fetch(url, config);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail ||
-        `API Error: ${response.status} ${response.statusText}`,
-      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail ||
+          `API Error: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      console.error(`Fetch error at ${url}:`, error);
+      throw error;
+    } finally {
+      // Remove from pending map shortly after resolving to allow for minor timing discrepancies
+      // e.g React StrictMode or slightly delayed sibling component mounts.
+      if (cacheKey) {
+        setTimeout(() => pendingGetRequests.delete(cacheKey), 100);
+      }
     }
+  })();
 
-    return (await response.json()) as T;
-  } catch (error) {
-    console.error(`Fetch error at ${url}:`, error);
-    throw error;
+  if (cacheKey) {
+    pendingGetRequests.set(cacheKey, fetchPromise);
   }
+
+  return fetchPromise;
 }

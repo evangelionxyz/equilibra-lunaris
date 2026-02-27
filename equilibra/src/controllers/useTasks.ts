@@ -20,7 +20,8 @@ export const useTasks = (projectId?: number) => {
         return;
       }
       const data = await taskService.getTasksByProject(projectId);
-      setTasks(data);
+      const sorted = data.sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+      setTasks(sorted);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -75,5 +76,36 @@ export const useTasks = (projectId?: number) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  return { tasks, loading, error, createTask, updateTask, deleteTask };
+  const reorderTasks = useCallback(
+    async (bucketId: number, taskIds: number[]) => {
+      try {
+        if (!projectId) return;
+
+        // Optimistic UI update
+        setTasks(prev => {
+          const map = new Map(prev.map(t => [t.id, t]));
+
+          taskIds.forEach((id, index) => {
+            const task = map.get(id);
+            if (task) {
+              task.order_idx = index;
+              task.bucket_id = bucketId;
+            }
+          });
+
+          return Array.from(map.values()).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+        });
+
+        // API call
+        await taskService.reorderTasks(projectId, bucketId, taskIds);
+      } catch (err) {
+        console.error("Failed to reorder tasks", err);
+        fetchTasks();
+        throw err;
+      }
+    },
+    [projectId, fetchTasks]
+  );
+
+  return { tasks, loading, error, createTask, updateTask, deleteTask, reorderTasks };
 };

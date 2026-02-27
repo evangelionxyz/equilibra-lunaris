@@ -1,4 +1,3 @@
-export type Role = "MANAGER" | "PROGRAMMER" | "DESIGNER";
 export type MeetingSource = "RECALL_BOT" | "MANUAL_UPLOAD" | "MANUAL";
 export type MeetingStatus = "SCHEDULED" | "PROCESSING" | "COMPLETED" | "FAILED";
 export type TaskStatus =
@@ -49,16 +48,18 @@ export interface Project {
   isLead?: boolean;
   tasksPending?: number;
   is_deleted?: boolean;
+  roles?: string[];
 }
 
 export interface ProjectMember {
   id?: number;
   user_id: number;
   project_id: number;
-  role: Role;
+  role: string;
   kpi_score: number; // VISIBLE TIER
   max_capacity: number;
   current_load: number; // For workload distribution chart
+  gh_username?: string;
 }
 
 export interface Activity {
@@ -110,6 +111,7 @@ export interface Task {
   id?: number;
   project_id: number;
   bucket_id?: number; // Replaces static status in logic
+  order_idx?: number;
   meeting_id?: number;
   parent_task_id?: number;
   lead_assignee_id?: number; // VISIBLE TIER

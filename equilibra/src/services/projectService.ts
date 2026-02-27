@@ -32,12 +32,10 @@ export const projectService = {
     if (ownerUserId && project && project.id) {
       await projectMemberService.createMember(project.id, {
         user_id: ownerUserId,
-        role: "Owner" as Role,
+        role: "Owner",
         max_capacity: 100,
         current_load: 0,
       });
-    } else {
-      console.log("WOWOWOWOWOWWOOW");
     }
 
     return project;

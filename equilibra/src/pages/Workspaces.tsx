@@ -70,7 +70,7 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {loading ? (
-            <div className="text-slate-500 text-[12px]">Scanning nodes...</div>
+            <div className="text-slate-500 text-[12px]">Loading projects...</div>
           ) : projects.length === 0 ? (
             <div className="col-span-2 text-center py-16 text-slate-500 text-[13px] border border-dashed border-[#374151] rounded-xl">
               No projects. <button onClick={openCreate} className="text-[#3B82F6] hover:underline">Create one.</button>
@@ -80,8 +80,6 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
               <ProjectCard
                 title={p.name}
                 desc={p.issue || "System operating within normal parameters."}
-                tag={p.status ?? 'Unknown'}
-                variant={statusVariant(p.status)}
                 progress={p.progress}
                 onClick={() => { setProject(p.id!); setPage('project'); }}
               />
