@@ -40,14 +40,16 @@ export const useProjects = () => {
   }, [fetchProjects]);
 
   const createProject = useCallback(
-    async (data: Pick<Project, "name"> & { description?: string }) => {
+    async (
+      data: Pick<Project, "name" | "gh_repo_url"> & { description?: string },
+    ) => {
       try {
         const created = await projectService.createProject(data);
         setProjects((prev) => [created, ...prev]);
         setMemberships((prev) => [
           ...prev,
           {
-            project_id: created.id,
+            project_id: created.id!,
             user_id: user?.db_user?.id || 1,
             role: "MANAGER" as Role,
             kpi_score: 100,

@@ -42,6 +42,7 @@ export const useTasks = (projectId?: number) => {
       type: TaskType;
       weight: number;
       status?: TaskStatus;
+      bucket_id?: number;
     }) => {
       try {
         const created = await taskService.createTask(data);

@@ -36,8 +36,8 @@ export const CriticalWatchlist: React.FC<CriticalWatchlistProps> = ({ onNavigate
         ) : (
           criticalProjects.map(proj => (
             <div
-              key={proj.id}
-              onClick={() => onNavigate(proj.id)}
+              key={proj.id!}
+              onClick={() => onNavigate(proj.id!)}
               className="p-5 rounded-xl border border-[#374151] bg-[#0B0E14] hover:border-[#3B82F6]/50 transition-all cursor-pointer relative flex flex-col justify-between h-40 group"
             >
               <div>

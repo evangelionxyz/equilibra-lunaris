@@ -3,7 +3,7 @@ import { Target, Play, Code, GitMerge } from 'lucide-react';
 import { SurfaceCard } from '../../design-system/SurfaceCard';
 import { Badge } from '../../design-system/Badge';
 import { Button } from '../../design-system/Button';
-import { taskService } from '../../services/mockService';
+import { taskService } from '../../services/taskService';
 
 // Represents the current user's ID in mock — matches mockUsers[0]
 const CURRENT_USER_ID = 1;

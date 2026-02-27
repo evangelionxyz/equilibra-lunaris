@@ -26,7 +26,7 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
   const [editTarget, setEditTarget] = useState<Partial<Project>>({});
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const handleCreate = async (data: Pick<Project, 'name' | 'github_repo_url'> & Partial<Project>) => {
+  const handleCreate = async (data: Pick<Project, 'name' | 'gh_repo_url'> & Partial<Project>) => {
     await createProject(data);
   };
 
@@ -81,10 +81,10 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
                 variant={statusVariant(p.status)}
                 progress={p.progress}
                 isLead={p.isLead}
-                onClick={() => { setProject(p.id); setPage('project'); }}
+                onClick={() => { setProject(p.id!); setPage('project'); }}
               />
               <button
-                onClick={() => handleDelete(p.id)}
+                onClick={() => handleDelete(p.id!)}
                 disabled={deletingId === p.id}
                 className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
               >
@@ -118,10 +118,10 @@ export const WorkspacesPage: React.FC<WorkspacesPageProps> = ({ setPage, setProj
                 tag={p.status ?? 'Unknown'}
                 variant={statusVariant(p.status)}
                 tasks={p.tasksPending}
-                onClick={() => { setProject(p.id); setPage('project'); }}
+                onClick={() => { setProject(p.id!); setPage('project'); }}
               />
               <button
-                onClick={() => handleDelete(p.id)}
+                onClick={() => handleDelete(p.id!)}
                 disabled={deletingId === p.id}
                 className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
               >

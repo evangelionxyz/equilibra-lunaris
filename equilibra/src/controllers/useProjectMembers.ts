@@ -10,7 +10,7 @@ export const useProjectMembers = (projectId: number) => {
     let isMounted = true;
     (async () => {
       setLoading(true);
-      const data = await memberService.getMembersByProject(projectId);
+      const data = await userService.getProjectMembers(projectId);
       if (isMounted) {
         setMembers(data);
         setLoading(false);

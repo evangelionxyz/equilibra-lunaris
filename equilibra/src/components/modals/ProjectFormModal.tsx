@@ -4,7 +4,7 @@ import type { Project } from '../../models';
 
 interface ProjectFormModalProps {
   onClose: () => void;
-  onSubmit: (data: Pick<Project, 'name' | 'github_repo_url'> & { isLead: boolean }) => Promise<void>;
+  onSubmit: (data: Pick<Project, 'name' | 'gh_repo_url'> & { isLead: boolean }) => Promise<void>;
   initial?: Partial<Project>;
   title?: string;
 }
@@ -13,7 +13,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   onClose, onSubmit, initial = {}, title = 'New Project',
 }) => {
   const [name, setName] = useState(initial.name ?? '');
-  const [repoUrl, setRepoUrl] = useState(initial.github_repo_url ?? '');
+  const [repoUrl, setRepoUrl] = useState(initial.gh_repo_url?.join(', ') ?? '');
   const [isLead, setIsLead] = useState(initial.isLead ?? true);
   const [saving, setSaving] = useState(false);
 
@@ -21,7 +21,8 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
     setSaving(true);
-    await onSubmit({ name: name.trim(), github_repo_url: repoUrl.trim(), isLead });
+    const repoUrls = repoUrl.split(',').map(u => u.trim()).filter(Boolean);
+    await onSubmit({ name: name.trim(), gh_repo_url: repoUrls, isLead });
     setSaving(false);
     onClose();
   };
@@ -59,12 +60,12 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
           <div>
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              GitHub Repository URL
+              GitHub Repository URLs (comma-separated)
             </label>
             <input
               value={repoUrl}
               onChange={e => setRepoUrl(e.target.value)}
-              placeholder="github.com/org/repo"
+              placeholder="github.com/org/repo1, github.com/org/repo2"
               className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-4 py-2.5 text-[13px] text-white placeholder-slate-600 focus:outline-none focus:border-[#3B82F6] transition-colors"
             />
           </div>

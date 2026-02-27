@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Meeting, MeetingSource } from "../models";
-import { meetingService } from "../services/mockService";
+import { meetingService } from "../services/meetingService";
+import { useToast } from "../design-system/Toast";
 
 export const useMeetings = (projectId: number) => {
   const { showToast } = useToast();

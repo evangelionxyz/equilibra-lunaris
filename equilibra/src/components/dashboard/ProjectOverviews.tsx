@@ -71,7 +71,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
           ))
         ) : (
           criticalInsights.map((alert) => (
-            <div key={alert.id} className="lg:col-span-4">
+            <div key={alert.id!} className="lg:col-span-4">
               <SurfaceCard className={`h-full ${alert.severity === 'critical' ? 'border-[#EF4444]/30 bg-[#EF4444]/5' : 'border-[#F59E0B]/30 bg-[#F59E0B]/5'}`}>
                 <div className={`flex items-center gap-3 mb-2 ${alert.severity === 'critical' ? 'text-[#EF4444]' : 'text-[#F59E0B]'}`}>
                   <AlertCircle size={18} />
@@ -109,7 +109,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
                 ))
               ) : (
                 tasksAtRisk.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#1F2937] border border-[#374151] cursor-pointer hover:border-[#3B82F6] transition-colors">
+                  <div key={task.id!} className="flex items-center gap-3 p-3 rounded-lg bg-[#1F2937] border border-[#374151] cursor-pointer hover:border-[#3B82F6] transition-colors">
                     <div className={`w-3 h-3 rounded-full border-2 ${task.warnStagnant ? 'border-[#EF4444]' : 'border-[#F59E0B]'}`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-white text-[12px] font-semibold truncate">{task.title}</p>
@@ -140,7 +140,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
                 ))
               ) : (
                 metrics.map(m => (
-                  <div key={m.id}>
+                  <div key={m.id!}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-white text-[12px] font-bold uppercase tracking-wider">{m.label}</span>
                       <Badge variant={m.status as any} className="!text-[8px] uppercase">{m.status}</Badge>
@@ -228,12 +228,12 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
                 ))
               ) : (
                 activities.map((act) => (
-                  <div key={act.id} className="flex items-start gap-3">
+                  <div key={act.id!} className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] mt-1.5 flex-shrink-0" />
                     <div className="text-slate-400 text-[12px] min-w-0 flex-1">
                       <span className="text-white font-semibold truncate block">{act.user_name}</span>
                       <span className="text-[11px] block mt-0.5">{act.action} <span className="text-[#3B82F6] font-semibold">{act.target}</span></span>
-                      <span className="text-[9px] text-slate-500 uppercase font-bold mt-1 block">{getTimeAgo(act.created_at)}</span>
+                      <span className="text-[9px] text-slate-500 uppercase font-bold mt-1 block">{getTimeAgo(act.created_at!)}</span>
                     </div>
                   </div>
                 ))
@@ -302,7 +302,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
           <SurfaceCard title="PR Status" subtitle="In Review" icon={GitPullRequest}>
             <div className="space-y-3">
               {myReviewTasks.map(task => (
-                <div key={task.id} className="bg-[#1F2937] border border-[#374151] p-3 rounded-lg flex justify-between items-center">
+                <div key={task.id!} className="bg-[#1F2937] border border-[#374151] p-3 rounded-lg flex justify-between items-center">
                   <div className="min-w-0 flex-1">
                     <Badge variant="primary" className="!text-[8px] mb-1">Open PR</Badge>
                     <p className="text-white text-[11px] font-mono truncate">{task.title}</p>
@@ -316,7 +316,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
           <SurfaceCard title="Team Pulse" subtitle="Recent Activity" icon={TrendingDown}>
             <div className="space-y-4">
               {activities.slice(0, 3).map((act) => (
-                <div key={act.id} className="flex items-start gap-3">
+                <div key={act.id!} className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] mt-1.5 flex-shrink-0" />
                   <div className="text-slate-400 text-[12px] min-w-0 flex-1">
                     <span className="text-white font-semibold truncate block">{act.user_name}</span>
@@ -343,7 +343,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
         <SurfaceCard title="My Queue" subtitle="Up Next" icon={Target} rightElement={<Badge>{myQueueTasks.length} Pending</Badge>}>
           <div className="space-y-3">
             {myQueueTasks.map((t) => (
-              <div key={t.id} className="p-3 rounded-lg bg-[#1F2937] border border-[#374151] flex flex-col gap-1 hover:border-[#3B82F6] transition-colors cursor-pointer">
+              <div key={t.id!} className="p-3 rounded-lg bg-[#1F2937] border border-[#374151] flex flex-col gap-1 hover:border-[#3B82F6] transition-colors cursor-pointer">
                 <div className="flex justify-between items-center">
                   <Badge variant={t.weight > 5 ? 'warning' : 'default'} className="!py-0 !px-1.5 !text-[8px]">{t.type}</Badge>
                   <span className="text-[10px] text-slate-400"><Clock size={10} className="inline mr-1" />{t.weight} pts</span>
