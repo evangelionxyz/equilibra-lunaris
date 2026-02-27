@@ -8,6 +8,7 @@ import psycopg2.extras
 from services.database.database import _get_conn
 from services.database.database import _put_conn
 from services.database.database import router as db_router
+from services.database.id_generator import _generator
 
 
 class DatabaseUser(BaseModel):
@@ -28,6 +29,7 @@ def db_create_user(user: DatabaseUser):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         mapping = {
+            "id": _generator.generate(),
             "display_name": user.display_name,
             "telegram_chat_id": user.telegram_chat_id,
             "gh_username": user.gh_username,
@@ -163,6 +165,55 @@ def get_or_create_user(github_id: Optional[int] = None, email: Optional[str] = N
         if conn:
             conn.rollback()
         raise
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.put("/users/{user_id}")
+def db_update_user(user_id: int, user_data: DatabaseUser):
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        update_data = user_data.dict(exclude_unset=True)
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No data provided for update")
+        
+        set_clause = ", ".join([f"{k} = %s" for k in update_data.keys()])
+        params = list(update_data.values())
+        params.append(user_id)
+        
+        sql = f"UPDATE public.users SET {set_clause} WHERE id = %s RETURNING id, display_name, created_at, telegram_chat_id, gh_username, gh_access_token, gh_id, email;"
+        
+        cur.execute(sql, params)
+        conn.commit()
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        return row
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.delete("/users/{user_id}")
+def db_delete_user(user_id: int):
+    """Hard delete a user."""
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        sql = "DELETE FROM public.users WHERE id = %s RETURNING id;"
+        cur.execute(sql, (user_id,))
+        conn.commit()
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"id": user_id, "status": "deleted"}
     finally:
         if cur is not None:
             cur.close()

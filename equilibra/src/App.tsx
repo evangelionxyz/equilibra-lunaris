@@ -46,10 +46,14 @@ function AppShell() {
   );
 }
 
+import { ToastProvider } from './design-system/Toast';
+
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <ToastProvider>
+        <AppShell />
+      </ToastProvider>
     </AuthProvider>
   );
 }

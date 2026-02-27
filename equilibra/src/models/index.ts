@@ -11,11 +11,24 @@ export type TaskStatus =
 export type TaskType = "CODE" | "REQUIREMENT" | "DESIGN" | "OTHER" | "NON-CODE";
 export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
 
+export interface Bucket {
+  id: number;
+  project_id: number;
+  state: string;
+  order_idx: number;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: number;
-  github_id: number;
-  github_username: string;
-  username?: string;
+  gh_id: number;
+  gh_username: string;
+  gh_access_token?: string;
+  telegram_chat_id?: string;
+  display_name?: string;
+  email?: string;
 }
 
 export interface UserAlias {
@@ -26,7 +39,7 @@ export interface UserAlias {
 export interface Project {
   id: number;
   name: string;
-  github_repo_url: string;
+  gh_repo_url: string;
   status?: string;
   progress?: number;
   issue?: string;
@@ -92,13 +105,14 @@ export interface Meeting {
 export interface Task {
   id: number;
   project_id: number;
+  bucket_id: number; // Replaces static status in logic
   meeting_id?: number;
   parent_task_id?: number;
   lead_assignee_id?: number; // VISIBLE TIER
   suggested_assignee_id?: number;
   title: string;
   description?: string; // LAZY LOAD TIER
-  status: TaskStatus; // VISIBLE TIER
+  status?: TaskStatus; // Derived from bucket for UI
   type: TaskType;
   weight: number; // VISIBLE TIER
   branch_name?: string;
@@ -124,4 +138,56 @@ export interface Alert {
   suggested_actions: string[];
   is_resolved: boolean;
   created_at: string;
+}
+
+// --- API Request Types ---
+
+export interface CreateProjectRequest {
+  name: string;
+  gh_repo_url?: string;
+  description?: string;
+}
+
+export interface UpdateProjectRequest {
+  name?: string;
+  gh_repo_url?: string;
+  description?: string;
+  is_deleted?: boolean;
+}
+
+export interface CreateTaskRequest {
+  project_id: number;
+  bucket_id?: number;
+  meeting_id?: number;
+  parent_task_id?: number;
+  lead_assignee_id?: number;
+  suggested_assignee_id?: number;
+  title: string;
+  description?: string;
+  type: TaskType;
+  weight: number;
+  branch_name?: string;
+}
+
+export interface UpdateTaskRequest {
+  bucket_id?: number;
+  meeting_id?: number;
+  parent_task_id?: number;
+  lead_assignee_id?: number;
+  suggested_assignee_id?: number;
+  title?: string;
+  description?: string;
+  type?: TaskType;
+  weight?: number;
+  branch_name?: string;
+  is_deleted?: boolean;
+}
+
+export interface UpdateUserRequest {
+  display_name?: string;
+  telegram_chat_id?: string;
+  gh_username?: string;
+  gh_access_token?: string;
+  gh_id?: string;
+  email?: string;
 }

@@ -5,6 +5,8 @@ import { Badge } from '../../design-system/Badge';
 import { ProgressBar } from '../../design-system/ProgressBar';
 import { useProjects } from '../../controllers/useProjects';
 
+import { CardSkeleton } from '../../design-system/Skeleton';
+
 const CRITICAL_STATUSES = ['Blocked', 'At Risk', 'Stalled'];
 
 const statusVariant = (status: string): 'critical' | 'warning' | 'default' => {
@@ -26,7 +28,7 @@ export const CriticalWatchlist: React.FC<CriticalWatchlistProps> = ({ onNavigate
     <SurfaceCard title="Critical Watchlist" subtitle="Contextual Project Bottlenecks" icon={Filter} rightElement={<MoreHorizontal className="text-slate-500 cursor-pointer" size={18} />}>
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {loading ? (
-          <div className="text-slate-500 text-[12px]">Scanning systems...</div>
+          [1, 2, 3, 4].map(i => <CardSkeleton key={i} />)
         ) : criticalProjects.length === 0 ? (
           <div className="col-span-4 text-slate-500 text-[13px] text-center py-10 border border-dashed border-[#374151] rounded-xl">
             No critical projects detected.

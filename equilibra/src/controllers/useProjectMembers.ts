@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ProjectMember } from "../models";
-import { memberService } from "../services/mockService";
+import { userService } from "../services/userService";
 
 export const useProjectMembers = (projectId: number) => {
   const [members, setMembers] = useState<ProjectMember[]>([]);

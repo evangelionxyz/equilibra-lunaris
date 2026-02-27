@@ -8,6 +8,7 @@ import psycopg2.extras
 from services.database.database import _get_conn
 from services.database.database import _put_conn
 from services.database.database import router as db_router
+from services.database.id_generator import _generator
 
 class DatabaseBucket(BaseModel):
     id: Optional[int] = None
@@ -28,6 +29,7 @@ def db_create_bucket(bucket: DatabaseBucket):
 
         # fetch to the last idx
         mapping = {
+            "id": _generator.generate(),
             "project_id": bucket.project_id,
             "state": bucket.state if bucket.state is not None else "",
             "created_at": bucket.created_at,

@@ -8,6 +8,7 @@ import psycopg2.extras
 from services.database.database import _get_conn
 from services.database.database import _put_conn
 from services.database.database import router as db_router
+from services.database.id_generator import _generator
 
 class DatabaseProjectMember(BaseModel):
     id: Optional[int] = None
@@ -27,6 +28,7 @@ def db_create_member(project_id: int, member: DatabaseProjectMember):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         mapping = {
+            "id": _generator.generate(),
             "user_id": member.user_id,
             "project_id": project_id,
             "role": member.role,

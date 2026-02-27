@@ -7,6 +7,8 @@ import { AlertDetailModal } from '../modals/AlertDetailModal';
 import { useProjects } from '../../controllers/useProjects';
 import type { Alert } from '../../models';
 
+import { Skeleton } from '../../design-system/Skeleton';
+
 interface UrgentActionsProps {
   onNavigateProject: (id: number) => void;
   className?: string;
@@ -23,10 +25,19 @@ export const UrgentActions: React.FC<UrgentActionsProps> = ({ onNavigateProject,
 
   return (
     <>
-      <SurfaceCard title="Urgent Action" icon={AlertCircle} className={className} rightElement={alerts.length > 0 ? <Badge variant="critical">{alerts.length} Items</Badge> : null}>
+      <SurfaceCard title="Urgent Action" icon={AlertCircle} className={className} rightElement={loading ? <Skeleton width={60} height={18} /> : (alerts.length > 0 ? <Badge variant="critical">{alerts.length} Items</Badge> : null)}>
         <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pr-2 min-h-0">
           {loading ? (
-             <div className="text-slate-500 text-[12px] py-4 text-center">Scanning alerts...</div>
+             [1, 2, 3].map(i => (
+               <div key={i} className="p-4 rounded-xl bg-[#1F2937] border border-[#374151]/30 flex justify-between items-center">
+                  <div className="flex-1">
+                    <Skeleton width="20%" height={10} className="mb-2" />
+                    <Skeleton width="80%" height={14} className="mb-2" />
+                    <Skeleton width="40%" height={10} />
+                  </div>
+                  <Skeleton variant="circle" width={24} height={24} className="ml-4" />
+               </div>
+             ))
           ) : alerts.length === 0 ? (
              <div className="text-slate-500 text-[12px] py-8 text-center border border-dashed border-[#374151] rounded-xl">All clear. No urgent actions required.</div>
           ) : (
