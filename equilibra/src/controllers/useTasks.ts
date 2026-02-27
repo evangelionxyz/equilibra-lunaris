@@ -38,12 +38,12 @@ export const useTasks = (projectId?: number) => {
 
   const createTask = useCallback(
     async (data: {
-      project_id: number;
+      project_id: string | number;
       title: string;
       type: TaskType;
       weight: number;
       status?: TaskStatus;
-      bucket_id?: number;
+      bucket_id?: string | number;
     }) => {
       try {
         const created = await taskService.createTask(data);
@@ -60,33 +60,54 @@ export const useTasks = (projectId?: number) => {
   );
 
   const updateTask = useCallback(
-    async (id: number, data: Partial<Task>) => {
-      // Backend update not fully implemented, but updating local state for UI
-      setTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...data } : t)),
-      );
-      showToast("Task updated locally", "info");
-      return tasks.find((t) => t.id === id)!;
+    async (id: string | number, data: Partial<Task>) => {
+      try {
+        // Optimistic local update
+        setTasks((prev) =>
+          prev.map((t) => (String(t.id) === String(id) ? { ...t, ...data } : t)),
+        );
+
+        const updated = await taskService.updateTask(id, data);
+        showToast("Task updated", "success");
+        return updated;
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to update task", "error");
+        // Rollback on failure by refetching
+        fetchTasks();
+        throw err;
+      }
     },
-    [tasks],
+    [fetchTasks],
   );
 
-  const deleteTask = useCallback(async (id: number) => {
-    // Assuming sequential local update if backend DELETE not ready
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  const deleteTask = useCallback(async (id: string | number) => {
+    try {
+      // Optimistic local update
+      setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
+
+      await taskService.deleteTask(id);
+      showToast("Task deleted", "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to delete task", "error");
+      // Rollback on failure by refetching
+      fetchTasks();
+      throw err;
+    }
+  }, [fetchTasks]);
 
   const reorderTasks = useCallback(
-    async (bucketId: number, taskIds: number[]) => {
+    async (bucketId: string | number, taskIds: (string | number)[]) => {
       try {
         if (!projectId) return;
 
         // Optimistic UI update
         setTasks(prev => {
-          const map = new Map(prev.map(t => [t.id, t]));
+          const map = new Map(prev.map(t => [String(t.id), t]));
 
           taskIds.forEach((id, index) => {
-            const task = map.get(id);
+            const task = map.get(String(id));
             if (task) {
               task.order_idx = index;
               task.bucket_id = bucketId;

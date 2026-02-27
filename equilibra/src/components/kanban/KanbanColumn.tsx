@@ -3,16 +3,16 @@ import { CheckCircle2 } from 'lucide-react';
 import { Badge } from '../../design-system/Badge';
 
 interface KanbanColumnProps {
-  id: string;
+  id: string | number;
   name: string;
   colorClass: string;
   description: string;
   statusText: string;
   taskCount: number;
-  onDropTask: (taskId: number, newBucketId: number, targetIndex?: number) => void;
-  onDragStartColumn?: (e: React.DragEvent<HTMLDivElement>, columnId: number) => void;
-  onDropColumn?: (e: React.DragEvent<HTMLDivElement>, targetColumnId: number) => void;
-  onAddTask?: (bucketId: number) => void;
+  onDropTask: (taskId: string | number, newBucketId: string | number, targetIndex?: number) => void;
+  onDragStartColumn?: (e: React.DragEvent<HTMLDivElement>, columnId: string | number) => void;
+  onDropColumn?: (e: React.DragEvent<HTMLDivElement>, targetColumnId: string | number) => void;
+  onAddTask?: (bucketId: string | number) => void;
   children: React.ReactNode;
 }
 
@@ -48,17 +48,17 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
     if (taskIdString) {
       e.preventDefault();
       e.stopPropagation();
-      onDropTask(parseInt(taskIdString, 10), parseInt(id, 10));
+      onDropTask(taskIdString, id);
     } else if (columnIdString && onDropColumn) {
       e.preventDefault();
       e.stopPropagation();
-      onDropColumn(e, parseInt(id, 10));
+      onDropColumn(e, id);
     }
   };
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     if (onDragStartColumn) {
-      onDragStartColumn(e, parseInt(id, 10));
+      onDragStartColumn(e, id);
     }
   };
 
@@ -90,7 +90,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
       <div className="p-3 overflow-y-auto space-y-3 no-scrollbar flex-1 relative min-h-[100px]">
         {children}
         <button
-          onClick={() => onAddTask && onAddTask(parseInt(id, 10))}
+          onClick={() => onAddTask && onAddTask(id)}
           className="w-full mt-2 py-2 flex items-center justify-center gap-1.5 text-slate-500 hover:text-white border border-dashed border-[#374151] hover:border-[#3B82F6] hover:bg-[#1F2937]/30 rounded-lg transition-all text-[12px] font-medium"
         >
           <span className="text-xl leading-none">+</span> Add Task

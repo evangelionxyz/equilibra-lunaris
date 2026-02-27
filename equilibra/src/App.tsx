@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./auth/authContext";
 import { useAuth } from "./auth/useAuth";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
@@ -12,48 +12,52 @@ import "./App.css";
 
 function AppShell() {
   const { user, isLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState("dashboard");
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
-    null
-  );
 
   if (isLoading) return <LoadingScreen message="Resolving session…" />;
   if (!user) return <LoginPage />;
 
   return (
     <div className="h-screen w-full bg-[#0B0E14] text-slate-300 font-sans flex overflow-hidden selection:bg-[#3B82F6]/30">
-      <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+      <Sidebar />
 
       <main className="flex-1 overflow-y-auto no-scrollbar p-8 pb-32">
-        {currentPage === "dashboard" && (
-          <DashboardPage
-            setPage={setCurrentPage}
-            setProject={setSelectedProjectId}
-          />
-        )}
-        {currentPage === "workspaces" && (
-          <WorkspacesPage
-            setPage={setCurrentPage}
-            setProject={setSelectedProjectId}
-          />
-        )}
-        {currentPage === "project" && (
-          <ProjectDetailsPage projectId={selectedProjectId!} />
-        )}
-        {currentPage === "notifications" && <NotificationsPage />}
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/workspaces" element={<WorkspacesPage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailsPageWrapper />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </main>
     </div>
   );
+}
+
+// Wrapper to pass the projectId param correctly to the old component prop structure
+import { useParams } from "react-router-dom";
+function ProjectDetailsPageWrapper() {
+  const { projectId } = useParams();
+  const navigate = useNavigate();
+
+  if (!projectId) {
+    navigate('/workspaces', { replace: true });
+    return null;
+  }
+
+  return <ProjectDetailsPage projectId={String(projectId)} />;
 }
 
 import { ToastProvider } from './design-system/Toast';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <AppShell />
-      </ToastProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <AppShell />
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

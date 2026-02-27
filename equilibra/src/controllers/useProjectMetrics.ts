@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { ProjectMetric } from "../models";
 import { metricService } from "../services/metricService";
 
-export const useProjectMetrics = (projectId: number) => {
+export const useProjectMetrics = (projectId: number | string | string) => {
   const [metrics, setMetrics] = useState<ProjectMetric[]>([]);
   const [loading, setLoading] = useState(true);
 

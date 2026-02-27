@@ -1,41 +1,42 @@
 import { apiFetch } from "./apiClient";
 import type { Task } from "../models";
+import JSONBig from 'json-bigint';
 
 export const taskService = {
-  getTasksByProject: async (projectId: number): Promise<Task[]> => {
+  getTasksByProject: async (projectId: number | string | string): Promise<Task[]> => {
     const tasks = await apiFetch<Task[]>("/tasks");
-    return tasks.filter((t) => t.project_id === projectId);
+    return tasks.filter((t) => String(t.project_id) === String(projectId));
   },
 
   getMyTasks: async (userId: number): Promise<Task[]> => {
     const tasks = await apiFetch<Task[]>("/tasks");
-    return tasks.filter((t) => t.lead_assignee_id === userId);
+    return tasks.filter((t) => String(t.lead_assignee_id) === String(userId));
   },
 
   createTask: async (data: Task): Promise<Task> => {
     return await apiFetch<Task>("/tasks", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSONBig.stringify(data),
     });
   },
 
-  updateTask: async (id: number, data: Task): Promise<Task> => {
+  updateTask: async (id: number | string, data: Partial<Task>): Promise<Task> => {
     return await apiFetch<Task>(`/tasks/${id}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSONBig.stringify(data),
     });
   },
 
-  deleteTask: async (id: number): Promise<void> => {
+  deleteTask: async (id: number | string): Promise<void> => {
     await apiFetch(`/tasks/${id}`, {
       method: "DELETE",
     });
   },
 
-  reorderTasks: async (projectId: number, bucketId: number, taskIds: number[]): Promise<{ status: string; order: number[]; bucket_id: number }> => {
+  reorderTasks: async (projectId: number | string | string, bucketId: number | string, taskIds: (number | string)[]): Promise<{ status: string; order: (number | string)[]; bucket_id: number | string }> => {
     return await apiFetch(`/projects/${projectId}/buckets/${bucketId}/tasks/reorder`, {
       method: "PUT",
-      body: JSON.stringify(taskIds),
+      body: JSONBig.stringify(taskIds),
     });
   },
 };

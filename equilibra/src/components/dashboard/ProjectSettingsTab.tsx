@@ -7,7 +7,7 @@ import { userService } from '../../services/userService';
 import type { Project, ProjectMember, User } from '../../models';
 
 interface ProjectSettingsTabProps {
-    projectId: number;
+    projectId: number | string | string;
 }
 
 export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectId }) => {

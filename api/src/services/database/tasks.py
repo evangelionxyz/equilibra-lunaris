@@ -189,9 +189,13 @@ def db_reorder_tasks(project_id: int, bucket_id: int, task_ids: list[int]):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         # Verify tasks belong to the project
+        if not task_ids:
+            return {"status": "success", "order": [], "bucket_id": bucket_id}
+
+        format_strings = ','.join(['%s'] * len(task_ids))
         cur.execute(
-            "SELECT id FROM public.tasks WHERE project_id = %s AND id = ANY(%s);",
-            (project_id, task_ids)
+            f"SELECT id FROM public.tasks WHERE project_id = %s AND id IN ({format_strings});",
+            tuple([project_id] + task_ids)
         )
         valid_tasks = set(row['id'] for row in cur.fetchall())
         invalid_tasks = set(task_ids) - valid_tasks
