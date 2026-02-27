@@ -13,11 +13,10 @@ class DatabaseProject(BaseModel):
     id: Optional[int] = None
     name: str
     description: Optional[str] = None
-    tasks: Optional[list[int]] = None
-    members: list[int] = Field(default_factory=list)
     is_deleted: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    gh_repo_url: Optional[list[str]] = Field(default_factory=list)
 
 
 @db_router.post("/projects")
@@ -30,8 +29,6 @@ def db_create_project(project: DatabaseProject):
         mapping = {
             "name": project.name,
             "description": project.description,
-            "tasks": project.tasks,
-            "members": project.members,
             "is_deleted": project.is_deleted,
         }
 
@@ -49,7 +46,7 @@ def db_create_project(project: DatabaseProject):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, description, tasks, members, is_deleted, created_at, updated_at;"
+        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, description, is_deleted, created_at, updated_at, gh_repo_url;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -75,7 +72,7 @@ def db_get_projects():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, description, tasks, members, is_deleted, created_at, updated_at FROM public.projects;"
+            "SELECT id, name, description, is_deleted, created_at, updated_at gh_repo_url, FROM public.projects;"
         )
         rows = cur.fetchall()
         return rows
@@ -92,7 +89,7 @@ def db_get_project_by_id(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, description, tasks, members, is_deleted, created_at, updated_at FROM public.projects WHERE id = %s LIMIT 1;",
+            "SELECT id, name, description, is_deleted, created_at, updated_at, gh_repo_url FROM public.projects WHERE id = %s LIMIT 1;",
             (project_id,),
         )
         row = cur.fetchone()
