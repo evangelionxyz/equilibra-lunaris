@@ -22,6 +22,9 @@ class DatabaseProject(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     roles: Optional[list[str]] = Field(default_factory=list)
+    completed_bucket_id: Optional[int] = None
+    in_review_bucket_id: Optional[int] = None
+    todo_bucket_id: Optional[int] = None
 
 
 @db_router.post("/projects")
@@ -38,6 +41,9 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
             "description": project.description,
             "is_deleted": project.is_deleted,
             "roles": project.roles,
+            "completed_bucket_id": project.completed_bucket_id,
+            "in_review_bucket_id": project.in_review_bucket_id,
+            "todo_bucket_id": project.todo_bucket_id,
         }
 
         columns = []
@@ -54,7 +60,7 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles;"
+        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id;"
 
         cur.execute(sql, params)
         row = cur.fetchone()
@@ -83,7 +89,7 @@ def db_get_projects():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles FROM public.projects;"
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects;"
         )
         rows = cur.fetchall()
         return rows
@@ -120,7 +126,7 @@ def db_get_projects_for_current_user(current_user: dict = Depends(get_current_us
             return []
 
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles FROM public.projects WHERE id = ANY(%s);",
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE id = ANY(%s);",
             (project_ids,)
         )
         projects = cur.fetchall()
@@ -138,7 +144,7 @@ def db_get_project_by_id(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles FROM public.projects WHERE id = %s LIMIT 1;",
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE id = %s LIMIT 1;",
             (project_id,),
         )
         row = cur.fetchone()
@@ -159,6 +165,10 @@ def db_update_project(project_id: int, project_data: DatabaseProject):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         update_data = project_data.dict(exclude_unset=True)
+        # Exclude fields that should not be updated manually
+        for field in ["id", "created_at", "updated_at"]:
+            update_data.pop(field, None)
+            
         if not update_data:
             raise HTTPException(status_code=400, detail="No data provided for update")
         
@@ -166,7 +176,7 @@ def db_update_project(project_id: int, project_data: DatabaseProject):
         params = list(update_data.values())
         params.append(project_id)
         
-        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles;"
+        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id;"
         
         cur.execute(sql, params)
         conn.commit()

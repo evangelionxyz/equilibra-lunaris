@@ -31,11 +31,9 @@ export const useBuckets = (projectId: number) => {
     const createBucket = useCallback(
         async (stateName: string) => {
             try {
-                const nextOrderIdx = buckets.length > 0 ? Math.max(...buckets.map(b => b.order_idx || 0)) + 1 : 0;
                 const newBucket = await bucketService.createBucket({
                     project_id: Number(projectId),
-                    state: stateName,
-                    order_idx: nextOrderIdx
+                    state: stateName
                 });
                 setBuckets(prev => [...prev, newBucket]);
                 return newBucket;
@@ -44,7 +42,7 @@ export const useBuckets = (projectId: number) => {
                 throw err;
             }
         },
-        [projectId, buckets]
+        [projectId]
     );
 
     const reorderBuckets = useCallback(

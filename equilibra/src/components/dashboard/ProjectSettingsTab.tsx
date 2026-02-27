@@ -4,7 +4,9 @@ import { Settings, Users, Plus, Search, Save, X } from 'lucide-react';
 import { projectService } from '../../services/projectService';
 import { projectMemberService } from '../../services/projectMemberService';
 import { userService } from '../../services/userService';
-import type { Project, ProjectMember, User } from '../../models';
+import { taskService } from '../../services/taskService';
+import { useToast } from '../../design-system/Toast';
+import type { Project, ProjectMember, User, Bucket } from '../../models';
 
 interface ProjectSettingsTabProps {
     projectId: number;
@@ -13,7 +15,9 @@ interface ProjectSettingsTabProps {
 export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectId }) => {
     const [project, setProject] = useState<Project | null>(null);
     const [members, setMembers] = useState<ProjectMember[]>([]);
+    const [buckets, setBuckets] = useState<Bucket[]>([]);
     const [loading, setLoading] = useState(true);
+    const { showToast } = useToast();
 
     // Project Edit State
     const [name, setName] = useState('');
@@ -33,11 +37,13 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
     const loadData = async () => {
         setLoading(true);
         try {
-            const [p, m] = await Promise.all([
-                projectService.getProjectById(projectId),
-                projectMemberService.getMembers(projectId)
+            const [p, m, b] = await Promise.all([
+                projectService.getProjectById(Number(projectId)),
+                projectMemberService.getMembers(Number(projectId)),
+                taskService.getBuckets(projectId)
             ]);
             setProject(p);
+            setBuckets(b);
             setName(p.name || '');
             setDescription(p.description || '');
             setRoles(p.roles || ['Owner', 'Member']); // Default fallback
@@ -56,17 +62,17 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
     const handleUpdateProject = async () => {
         if (!project) return;
         try {
-            const updated = await projectService.updateProject(projectId, {
+            const updated = await projectService.updateProject(Number(projectId), {
                 ...project,
                 name,
                 description,
                 roles
             });
             setProject(updated);
-            alert('Project updated successfully');
+            showToast('Project updated successfully', 'success');
         } catch (e) {
             console.error(e);
-            alert('Failed to update project');
+            showToast('Failed to update project', 'error');
         }
     };
 
@@ -115,9 +121,10 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
             setSelectedUser(null);
             setSearchQuery('');
             setSelectedRole('');
+            showToast('Member added successfully', 'success');
         } catch (e) {
             console.error(e);
-            alert('Failed to add member');
+            showToast('Failed to add member', 'error');
         }
     };
 
@@ -147,6 +154,56 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
                             className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none min-h-[100px]"
                         />
                     </div>
+                    <div className="pt-4 border-t border-[#374151]">
+                        <h4 className="text-[14px] font-bold text-white mb-4 flex items-center gap-2">
+                            GitHub Integration
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-[12px] font-medium text-slate-400 mb-1">Todo Bucket</label>
+                                <p className="text-[11px] text-slate-500 mb-2">Tasks move here when negative feedback is received.</p>
+                                <select
+                                    value={project?.todo_bucket_id?.toString() || ''}
+                                    onChange={e => setProject(project ? { ...project, todo_bucket_id: e.target.value ? Number(e.target.value) : undefined } : null)}
+                                    className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none"
+                                >
+                                    <option value="">Select a bucket...</option>
+                                    {buckets.map(b => (
+                                        <option key={b.id?.toString()} value={b.id?.toString()}>{b.state}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[12px] font-medium text-slate-400 mb-1">In Review Bucket</label>
+                                <p className="text-[11px] text-slate-500 mb-2">Tasks move here when a Pull Request is opened.</p>
+                                <select
+                                    value={project?.in_review_bucket_id?.toString() || ''}
+                                    onChange={e => setProject(project ? { ...project, in_review_bucket_id: e.target.value ? Number(e.target.value) : undefined } : null)}
+                                    className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none"
+                                >
+                                    <option value="">Select a bucket...</option>
+                                    {buckets.map(b => (
+                                        <option key={b.id?.toString()} value={b.id?.toString()}>{b.state}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[12px] font-medium text-slate-400 mb-1">Completed Bucket</label>
+                                <p className="text-[11px] text-slate-500 mb-2">Tasks move here when a Pull Request is merged.</p>
+                                <select
+                                    value={project?.completed_bucket_id?.toString() || ''}
+                                    onChange={e => setProject(project ? { ...project, completed_bucket_id: e.target.value ? Number(e.target.value) : undefined } : null)}
+                                    className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none"
+                                >
+                                    <option value="">Select a bucket...</option>
+                                    {buckets.map(b => (
+                                        <option key={b.id?.toString()} value={b.id?.toString()}>{b.state}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <button
                         onClick={handleUpdateProject}
                         className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] text-white rounded-lg text-[13px] font-bold hover:bg-[#2563EB] transition-colors"

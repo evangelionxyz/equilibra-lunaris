@@ -49,6 +49,9 @@ export interface Project {
   tasksPending?: number;
   is_deleted?: boolean;
   roles?: string[];
+  completed_bucket_id?: number;
+  in_review_bucket_id?: number;
+  todo_bucket_id?: number;
 }
 
 export interface ProjectMember {
