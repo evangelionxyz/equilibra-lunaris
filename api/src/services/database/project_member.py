@@ -9,30 +9,30 @@ from services.database.database import _get_conn
 from services.database.database import _put_conn
 from services.database.database import router as db_router
 
-class DatabaseProject(BaseModel):
+class DatabaseProjectMember(BaseModel):
     id: Optional[int] = None
-    name: str
-    description: Optional[str] = None
-    tasks: Optional[list[int]] = None
-    members: list[int] = Field(default_factory=list)
-    is_deleted: bool = False
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    user_id: Optional[int] = None
+    project_id: Optional[str] = None
+    role: Optional[str] = None
+    kpi_score: Optional[float] = None
+    max_capacity: int = None
+    current_load: int = None
 
 
-@db_router.post("/projects")
-def db_create_project(project: DatabaseProject):
+@db_router.post("/projects/{project_id}/members")
+def db_create_member(project_id: int, member: DatabaseProjectMember):
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         mapping = {
-            "name": project.name,
-            "description": project.description,
-            "tasks": project.tasks,
-            "members": project.members,
-            "is_deleted": project.is_deleted,
+            "user_id": member.user_id,
+            "project_id": project_id,
+            "role": member.role,
+            "kpi_score": member.kpi_score,
+            "max_capacity": member.max_capacity,
+            "current_load": member.current_load
         }
 
         columns = []
@@ -49,7 +49,7 @@ def db_create_project(project: DatabaseProject):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, description, tasks, members, is_deleted, created_at, updated_at;"
+        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -68,14 +68,15 @@ def db_create_project(project: DatabaseProject):
 
 
 
-@db_router.get("/projects")
-def db_get_projects():
+@db_router.get("/projects/{project_id}/members")
+def db_get_members(project_id: int):
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, description, tasks, members, is_deleted, created_at, updated_at FROM public.projects;"
+            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id = %s",
+            (str(project_id))
         )
         rows = cur.fetchall()
         return rows
@@ -85,19 +86,19 @@ def db_get_projects():
         _put_conn(conn)
 
 
-@db_router.get("/projects/{project_id}")
-def db_get_project_by_id(project_id: int):
+@db_router.get("/projects/{project_id}/members/{member_id}")
+def db_get_member_by_id(project_id: int, member_id: int):
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, description, tasks, members, is_deleted, created_at, updated_at FROM public.projects WHERE id = %s LIMIT 1;",
-            (project_id,),
+            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id AND user_id = %s LIMIT 1;",
+            (str(project_id), str(member_id)),
         )
         row = cur.fetchone()
         if row is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            raise HTTPException(status_code=404, detail="Project member not found")
         return row
     finally:
         if cur is not None:
