@@ -27,7 +27,11 @@ def db_create_bucket(item: DatabaseBucket):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # fetch to the last idx
+        if item.order_idx is None:
+            cur.execute("SELECT COALESCE(MAX(order_idx), -1) as max_idx FROM public.buckets WHERE project_id = %s AND is_deleted = False", (item.project_id,))
+            result = cur.fetchone()
+            item.order_idx = result["max_idx"] + 1
+
         mapping = {
             "id": _generator.generate(),
             "project_id": item.project_id,

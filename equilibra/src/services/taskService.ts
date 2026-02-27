@@ -1,5 +1,5 @@
 import { apiFetch } from "./apiClient";
-import type { Task } from "../models";
+import type { Task, Bucket } from "../models";
 import JSONBig from 'json-bigint';
 
 export const taskService = {
@@ -38,5 +38,9 @@ export const taskService = {
       method: "PUT",
       body: JSONBig.stringify(taskIds),
     });
+  },
+
+  getBuckets: async (projectId: number | string): Promise<Bucket[]> => {
+    return await apiFetch<Bucket[]>(`/projects/${projectId}/buckets`);
   },
 };

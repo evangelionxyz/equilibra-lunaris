@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, HTTPException, Header, BackgroundTasks, 
 from routers.auth import get_current_user
 from github_app import get_github_client, get_github_integration, verify_webhook_signature
 from services.pr_evaluator import process_pr_evaluation
+from services.webhook_handlers import handle_pr_closed, handle_pr_opened
 
 router = APIRouter(tags=["GitHub App"])
 logger = logging.getLogger("uvicorn.error")
@@ -82,6 +83,19 @@ async def github_webhook(
             )
             logger.info(f"Queued PR #{pr_number} on {repo_full_name} for AI evaluation.")
             return {"handled": True, "event": event, "action": action, "pr": pr_number, "status": "queued"}
+        
+        if action == "closed":
+            background_tasks.add_task(handle_pr_closed, payload)
+        elif action in ["opened", "reopened"]:
+            background_tasks.add_task(handle_pr_opened, payload)
+            
+    elif event == "pull_request_review":
+        from services.webhook_handlers import handle_pr_review_submitted
+        action = payload.get("action")
+        if action == "submitted":
+            background_tasks.add_task(handle_pr_review_submitted, payload)
+            logger.info(f"Queued PR #{payload.get('pull_request', {}).get('number')} closure handler.")
+            return {"handled": True, "event": event, "action": action, "status": "queued"}
             
         return {"handled": True, "event": event, "action": action, "status": "ignored_action"}
 
