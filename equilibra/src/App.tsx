@@ -59,7 +59,7 @@ function App() {
       {/* Main Content Area: STRICT PADDING (Top 32, Left 32, Right 32, Bottom 128) */}
       {/* 32px is roughly p-8 in tailwind context (4 * 8px = 32px) */}
       <main className="flex-1 overflow-y-auto no-scrollbar relative w-full p-8 pb-[128px]">
-        {currentPage === 'dashboard' && <DashboardPage role={role} setPage={setCurrentPage} />}
+        {currentPage === 'dashboard' && <DashboardPage setPage={setCurrentPage} />}
         {currentPage === 'workspaces' && <WorkspacesPage setPage={setCurrentPage} />}
         {currentPage === 'project' && <ProjectDetailsPage role={role} />}
         {currentPage === 'notifications' && <NotificationsPage />}

@@ -13,15 +13,13 @@ import { SurfaceCard } from '../design-system/SurfaceCard';
 import { Button } from '../design-system/Button';
 import { UrgentActions } from '../components/dashboard/UrgentActions';
 import { MyQueue } from '../components/dashboard/MyQueue';
-import { UpNext } from '../components/dashboard/UpNext';
 import { CriticalWatchlist } from '../components/dashboard/CriticalWatchlist';
 
 interface DashboardPageProps {
-  role: 'PM' | 'DEV';
   setPage: (page: string) => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ role, setPage }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage }) => {
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const currentMonthDays = Array.from({ length: 31 }, (_, i) => ({ day: i + 1, isCurrent: true }));
   const nextMonthDays = Array.from({ length: 4 }, (_, i) => ({ day: i + 1, isCurrent: false }));
@@ -43,7 +41,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ role, setPage }) =
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1600px] mx-auto w-full">
       {/* Header & Banner */}
-      <div className="flex flex-col gap-6 mb-2">
+      <div className="flex flex-col gap-6">
         <div className="flex justify-between items-end">
           <div>
             <span className="text-[#3B82F6] text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 mb-2">
@@ -129,8 +127,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ role, setPage }) =
 
         {/* Action Columns - Right Column */}
         <div className="xl:col-span-4 space-y-6 flex flex-col relative z-0">
-          {role === 'PM' ? <UrgentActions /> : <MyQueue />}
-          <UpNext />
+          <UrgentActions />
+          <MyQueue />
         </div>
       </div>
 
