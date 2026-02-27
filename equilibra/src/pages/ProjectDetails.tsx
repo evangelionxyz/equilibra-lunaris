@@ -9,12 +9,14 @@ import { MeetingAccordion } from '../components/dashboard/MeetingAccordion';
 import { MeetingIntelligenceTab } from '../components/dashboard/MeetingIntelligenceTab';
 import { KanbanCard } from '../components/kanban/KanbanCard';
 import { KanbanColumn } from '../components/kanban/KanbanColumn';
+import { TaskDetailModal } from '../components/modals/TaskDetailModal';
 import { SurfaceCard } from '../design-system/SurfaceCard';
 import { TaskFormModal } from '../components/modals/TaskFormModal';
 import { MeetingFormModal } from '../components/modals/MeetingFormModal';
 import { useCurrentUserRole } from '../controllers/useCurrentUserRole';
+import { useProjectMembers } from '../controllers/useProjectMembers';
 import { projectService } from '../services/projectService';
-import type { TaskType, TaskStatus, Project } from '../models';
+import type { TaskType, TaskStatus, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
   projectId: number;
@@ -32,6 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
   const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | undefined>(undefined);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
@@ -41,6 +44,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   }, [projectId]);
 
   const { role, loading: roleLoading } = useCurrentUserRole(projectId);
+  const { members } = useProjectMembers(projectId);
   const { buckets, loading: bucketsLoading, createBucket, reorderBuckets } = useBuckets(projectId);
   const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask, reorderTasks } = useTasks(projectId);
   const { meetings, loading: meetingsLoading, createMeeting, deleteMeeting } = useMeetings(projectId);
@@ -48,23 +52,27 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const [newBucketName, setNewBucketName] = useState('');
   const [isCreatingBucket, setIsCreatingBucket] = useState(false);
 
-  const handleCreateTask = async (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number }) => {
+  const handleCreateTask = async (data: { project_id: string | number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: string | number }) => {
     await createTask(data);
   };
 
-  const handleDropTask = async (taskId: number, newBucketId: number, targetTaskId?: number) => {
+  const handleUpdateTask = async (taskId: string | number, data: Partial<Task>) => {
+    await updateTask(taskId, data);
+  };
+
+  const handleDropTask = async (taskId: string | number, newBucketId: string | number, targetTaskId?: string | number) => {
     // Determine the task order within the target bucket based on where it was dropped
-    const bucketTasks = tasks.filter(t => t.bucket_id === newBucketId).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
-    const draggedTask = tasks.find(t => t.id === taskId);
+    const bucketTasks = tasks.filter(t => String(t.bucket_id) === String(newBucketId)).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+    const draggedTask = tasks.find(t => String(t.id) === String(taskId));
     if (!draggedTask) return;
 
     // Filter out the dragged task to avoid self-collision
-    const filteredTasks = bucketTasks.filter(t => t.id !== taskId);
+    const filteredTasks = bucketTasks.filter(t => String(t.id) !== String(taskId));
 
     // Calculate new position
     let newIndex = filteredTasks.length; // Default to end
     if (targetTaskId) {
-      const targetIndex = filteredTasks.findIndex(t => t.id === targetTaskId);
+      const targetIndex = filteredTasks.findIndex(t => String(t.id) === String(targetTaskId));
       if (targetIndex !== -1) {
         newIndex = targetIndex;
       }
@@ -74,7 +82,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     filteredTasks.splice(newIndex, 0, draggedTask);
 
     // Build reordered IDs
-    const taskIds = filteredTasks.map(t => t.id!);
+    const taskIds = filteredTasks.map(t => t.id!).map(id => typeof id === 'string' ? Number(id) : id);
 
     await reorderTasks(newBucketId, taskIds);
   };
@@ -95,12 +103,13 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     }
   };
 
-  const handleDragStartColumn = (e: React.DragEvent<HTMLDivElement>, columnId: number) => {
+  const handleDragStartColumn = (e: React.DragEvent<HTMLDivElement>, columnId: string | number) => {
     e.dataTransfer.setData('columnId', columnId.toString());
   };
 
-  const handleDropColumn = async (e: React.DragEvent<HTMLDivElement>, targetColumnId: number) => {
-    const draggedColumnId = parseInt(e.dataTransfer.getData('columnId'), 10);
+  const handleDropColumn = async (e: React.DragEvent<HTMLDivElement>, targetColumnId: string | number) => {
+    e.stopPropagation();
+    const draggedColumnId = Number(e.dataTransfer.getData('columnId'));
     if (isNaN(draggedColumnId) || draggedColumnId === targetColumnId) return;
 
     const oldIndex = buckets.findIndex(b => b.id === draggedColumnId);
@@ -173,7 +182,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
             ) : (
               <div className="flex gap-4 overflow-x-auto pb-4 flex-1 no-scrollbar items-start">
                 {buckets.map(bucket => {
-                  const colTasks = tasks.filter(t => t.bucket_id === bucket.id);
+                  const colTasks = tasks.filter(t => String(t.bucket_id) === String(bucket.id));
                   return (
                     <KanbanColumn
                       key={bucket.id}
@@ -191,7 +200,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">
                           <KanbanCard
-                            id={task.id!}
+                            id={String(task.id!)}
                             title={task.title}
                             type={task.type}
                             weight={String(task.weight)}
@@ -199,10 +208,11 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                             pr={!!task.prUrl}
                             warnStagnant={task.warnStagnant}
                             isSuggested={task.isSuggested}
-                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(draggedTaskId, bucket.id!, targetTaskId)}
+                            onClick={() => setSelectedTaskForEdit(task)}
+                            onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(Number(draggedTaskId), Number(bucket.id!), targetTaskId ? Number(targetTaskId) : undefined)}
                           />
                           <button
-                            onClick={() => deleteTask(task.id!)}
+                            onClick={() => deleteTask(Number(task.id!))}
                             className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 p-1 rounded bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                           >
                             <Trash2 size={10} />
@@ -312,6 +322,16 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
           projectId={projectId}
           onClose={() => setShowMeetingModal(false)}
           onSubmit={handleCreateMeeting}
+        />
+      )}
+
+      {selectedTaskForEdit && (
+        <TaskDetailModal
+          task={selectedTaskForEdit}
+          buckets={buckets}
+          members={members}
+          onClose={() => setSelectedTaskForEdit(null)}
+          onUpdate={handleUpdateTask}
         />
       )}
     </div>

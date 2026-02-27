@@ -1,3 +1,5 @@
+import JSONBig from 'json-bigint';
+
 const BASE_URL = "http://localhost:8000";
 
 // Map to cleanly deduplicate concurrent identical GET requests
@@ -35,14 +37,22 @@ export async function apiFetch<T>(
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData: any = {};
+        try {
+          const text = await response.text();
+          errorData = text ? JSONBig({ storeAsString: false }).parse(text) : {};
+        } catch (e) {
+          // ignore parsing error for error bodies
+        }
+
         throw new Error(
           errorData.detail ||
           `API Error: ${response.status} ${response.statusText}`,
         );
       }
 
-      return (await response.json()) as T;
+      const text = await response.text();
+      return (text ? JSONBig({ storeAsString: false }).parse(text) : {}) as T;
     } catch (error) {
       console.error(`Fetch error at ${url}:`, error);
       throw error;

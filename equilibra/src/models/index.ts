@@ -108,14 +108,14 @@ export interface Meeting {
 }
 
 export interface Task {
-  id?: number;
-  project_id: number;
-  bucket_id?: number; // Replaces static status in logic
+  id?: number | string;
+  project_id: number | string;
+  bucket_id?: number | string; // Replaces static status in logic
   order_idx?: number;
-  meeting_id?: number;
-  parent_task_id?: number;
-  lead_assignee_id?: number; // VISIBLE TIER
-  suggested_assignee_id?: number;
+  meeting_id?: number | string;
+  parent_task_id?: number | string;
+  lead_assignee_id?: number | string; // VISIBLE TIER
+  suggested_assignee_id?: number | string;
   title: string;
   description?: string; // LAZY LOAD TIER
   status?: TaskStatus; // Derived from bucket for UI

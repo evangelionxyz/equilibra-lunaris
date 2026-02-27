@@ -38,12 +38,12 @@ export const useTasks = (projectId?: number) => {
 
   const createTask = useCallback(
     async (data: {
-      project_id: number;
+      project_id: string | number;
       title: string;
       type: TaskType;
       weight: number;
       status?: TaskStatus;
-      bucket_id?: number;
+      bucket_id?: string | number;
     }) => {
       try {
         const created = await taskService.createTask(data);
@@ -60,33 +60,33 @@ export const useTasks = (projectId?: number) => {
   );
 
   const updateTask = useCallback(
-    async (id: number, data: Partial<Task>) => {
+    async (id: string | number, data: Partial<Task>) => {
       // Backend update not fully implemented, but updating local state for UI
       setTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...data } : t)),
+        prev.map((t) => (String(t.id) === String(id) ? { ...t, ...data } : t)),
       );
       showToast("Task updated locally", "info");
-      return tasks.find((t) => t.id === id)!;
+      return tasks.find((t) => String(t.id) === String(id))!;
     },
     [tasks],
   );
 
-  const deleteTask = useCallback(async (id: number) => {
+  const deleteTask = useCallback(async (id: string | number) => {
     // Assuming sequential local update if backend DELETE not ready
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
   }, []);
 
   const reorderTasks = useCallback(
-    async (bucketId: number, taskIds: number[]) => {
+    async (bucketId: string | number, taskIds: (string | number)[]) => {
       try {
         if (!projectId) return;
 
         // Optimistic UI update
         setTasks(prev => {
-          const map = new Map(prev.map(t => [t.id, t]));
+          const map = new Map(prev.map(t => [String(t.id), t]));
 
           taskIds.forEach((id, index) => {
-            const task = map.get(id);
+            const task = map.get(String(id));
             if (task) {
               task.order_idx = index;
               task.bucket_id = bucketId;

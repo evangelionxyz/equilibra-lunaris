@@ -2,17 +2,20 @@ import React from 'react';
 import { Badge } from '../../design-system/Badge';
 import { Clock, GitPullRequest, MoreHorizontal, UserCircle2 } from 'lucide-react';
 
+import type { TaskType } from '../../models';
+
 interface KanbanCardProps {
-  id: number;
+  id: string | number;
   title: string;
-  type: string;
-  weight: string;
+  type: TaskType;
+  weight: string | number;
   assignee?: string;
   status?: string;
   warnStagnant?: boolean;
   isSuggested?: boolean;
   pr?: boolean;
-  onDropTask?: (taskId: number, targetTaskId?: number) => void;
+  onDropTask?: (draggedTaskId: string | number, targetTaskId?: string | number) => void;
+  onClick?: () => void;
 }
 
 export const KanbanCard: React.FC<KanbanCardProps> = ({
@@ -24,7 +27,8 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
   warnStagnant,
   isSuggested,
   pr,
-  onDropTask
+  onDropTask,
+  onClick
 }) => {
   const [isOver, setIsOver] = React.useState(false);
 
@@ -49,7 +53,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
     if (onDropTask) {
       const draggedId = e.dataTransfer.getData('taskId');
       if (draggedId) {
-        onDropTask(parseInt(draggedId, 10), id);
+        onDropTask(draggedId, id);
       }
     }
   };
@@ -57,6 +61,7 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
   return (
     <div
       draggable
+      onClick={onClick}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
