@@ -29,35 +29,20 @@ def _create_draft_approval_alert(user_uuid: str, project_id: int, meeting_title:
     try:
         cur = conn.cursor()
         
-        # 1. Resolve user integer ID from the UUID (which is stored in user_uuid column or passed as id string)
-        # Assuming user_uuid string matches the 'id' in users, or is the github id mapped there
-        # but in this codebase, auth returns `id` (github id) and `uuid` (str).
-        # We need the user's primary integer ID for alerts.user_id:
-        cur.execute("SELECT id FROM public.users WHERE github_id = %s OR uuid = %s LIMIT 1", (str(user_uuid), str(user_uuid)))
-        row = cur.fetchone()
-        user_db_id = row[0] if row else None
-        
-        # For safety if DB lookup fails but we still want an alert
-        if not user_db_id:
-            try:
-                user_db_id = int(str(user_uuid))
-            except ValueError:
-                user_db_id = None
-        
+        # user_id in the alerts table is VARCHAR — pass the GitHub id string directly.
         alert_id = _generator.generate()
         title = f"Review Extracted Tasks: {meeting_title}"
         desc = "The AI has finished extracting tasks from the meeting. Please review and confirm which ones should be added to the backlog."
         
         sql = """
             INSERT INTO public.alerts 
-                (id, user_id, project_id, title, description, type, severity, is_resolved) 
+                (id, user_id, context_id, project_id, title, description, type, severity, is_resolved, suggested_actions) 
             VALUES 
-                (%s, %s, %s, %s, %s, 'DRAFT_APPROVAL', 'info', FALSE) 
+                (%s, %s, %s, %s, %s, %s, 'DRAFT_APPROVAL', 'info', FALSE, ARRAY[]::TEXT[]) 
             RETURNING id;
         """
-        cur.execute(sql, (alert_id, user_db_id, project_id, title, desc))
+        cur.execute(sql, (alert_id, str(user_uuid), project_id, project_id, title, desc))
         conn.commit()
-        
         return alert_id
     except Exception as e:
         conn.rollback()
