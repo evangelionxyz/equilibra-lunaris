@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { Role } from "../models";
 import { userService } from "../services/userService";
 
-export const useCurrentUserRole = (projectId: number | string | string | null) => {
+export const useCurrentUserRole = (projectId: number | string | null) => {
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
 

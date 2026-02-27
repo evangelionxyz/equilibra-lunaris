@@ -77,7 +77,7 @@ def db_get_buckets(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx, is_deleted FROM public.buckets WHERE project_id = %s;",
+            "SELECT id, project_id, state, created_at, updated_at, order_idx, is_deleted FROM public.buckets WHERE project_id = %s AND is_deleted = False;",
             (project_id,)
         )
         rows = cur.fetchall()
@@ -134,6 +134,38 @@ def db_reorder_buckets(project_id: int, bucket_ids: list[int]):
 
         conn.commit()
         return {"status": "success", "order": bucket_ids}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.delete("/projects/{project_id}/buckets/{bucket_id}")
+def db_delete_bucket(project_id: int, bucket_id: int):
+    """Soft delete a bucket."""
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Check if tasks are in the bucket
+        cur.execute("SELECT COUNT(*) as count FROM public.tasks WHERE bucket_id = %s AND is_deleted = False;", (bucket_id,))
+        count = cur.fetchone()['count']
+        if count > 0:
+             raise HTTPException(status_code=400, detail="Cannot delete bucket with active tasks. Please move or delete tasks first.")
+
+        sql = "UPDATE public.buckets SET is_deleted = True, updated_at = NOW() WHERE id = %s AND project_id = %s RETURNING id;"
+        cur.execute(sql, (bucket_id, project_id))
+        conn.commit()
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Bucket not found")
+        return {"id": bucket_id, "status": "deleted"}
+    except HTTPException:
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))

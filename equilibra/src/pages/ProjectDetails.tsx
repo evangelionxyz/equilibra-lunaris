@@ -10,6 +10,7 @@ import { MeetingIntelligenceTab } from '../components/dashboard/MeetingIntellige
 import { KanbanCard } from '../components/kanban/KanbanCard';
 import { KanbanColumn } from '../components/kanban/KanbanColumn';
 import { TaskDetailModal } from '../components/modals/TaskDetailModal';
+import { ConfirmModal } from '../components/modals/ConfirmModal';
 import { SurfaceCard } from '../design-system/SurfaceCard';
 import { TaskFormModal } from '../components/modals/TaskFormModal';
 import { MeetingFormModal } from '../components/modals/MeetingFormModal';
@@ -21,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import type { TaskType, TaskStatus, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
-  projectId: number | string | string;
+  projectId: number | string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,6 +40,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
   const [selectedBucketTarget, setSelectedBucketTarget] = useState<number | string | undefined>(undefined);
+  const [bucketToDelete, setBucketToDelete] = useState<string | number | null>(null);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
 
@@ -48,7 +50,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
 
   const { role, loading: roleLoading } = useCurrentUserRole(projectId);
   const { members } = useProjectMembers(projectId);
-  const { buckets, loading: bucketsLoading, createBucket, reorderBuckets } = useBuckets(projectId);
+  const { buckets, loading: bucketsLoading, createBucket, reorderBuckets, deleteBucket } = useBuckets(projectId);
   const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask, reorderTasks } = useTasks(projectId);
   const { meetings, loading: meetingsLoading, createMeeting, deleteMeeting } = useMeetings(projectId);
 
@@ -195,13 +197,13 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                       id={bucket.id!.toString()}
                       name={bucket.state}
                       colorClass={STATUS_COLORS[bucket.state] || 'bg-slate-500'}
-                      description="Project Stage"
                       statusText="ACTIVE"
                       taskCount={colTasks.length}
                       onDropTask={handleDropTask}
                       onDragStartColumn={handleDragStartColumn}
                       onDropColumn={handleDropColumn}
                       onAddTask={(bId) => { setSelectedBucketTarget(String(bId)); setShowTaskModal(true); }}
+                      onDeleteBucket={(bId) => setBucketToDelete(bId)}
                     >
                       {colTasks.map(task => (
                         <div key={task.id} className="relative group/card">
@@ -330,7 +332,6 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
           onSubmit={handleCreateMeeting}
         />
       )}
-
       {selectedTaskForEdit && (
         <TaskDetailModal
           task={selectedTaskForEdit}
@@ -338,6 +339,24 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
           members={members}
           onClose={() => setSelectedTaskForEdit(null)}
           onUpdate={handleUpdateTask}
+        />
+      )}
+
+      {bucketToDelete && (
+        <ConfirmModal
+          title="Delete Column"
+          message="Are you sure you want to delete this column? This action cannot be undone and only works if the column is empty."
+          confirmLabel="Delete Column"
+          onConfirm={async () => {
+            try {
+              await deleteBucket(bucketToDelete);
+              setBucketToDelete(null);
+            } catch (err) {
+              setBucketToDelete(null);
+            }
+          }}
+          onCancel={() => setBucketToDelete(null)}
+          variant="danger"
         />
       )}
     </div>

@@ -25,7 +25,7 @@ import { useAuth } from '../../auth/useAuth';
 import { Skeleton } from '../../design-system/Skeleton';
 
 interface ProjectOverviewProps {
-  projectId: number | string | string;
+  projectId: number | string;
 }
 
 export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId }) => {
