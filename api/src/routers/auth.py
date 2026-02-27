@@ -29,6 +29,11 @@ class AuthMeResponse(BaseModel):
     public_repos: int | None = None
     followers: int | None = None
     db_user: DatabaseUser | None = None
+    
+http_client = httpx.AsyncClient(
+    timeout=httpx.Timeout(15.0, connect=5.0), 
+    limits=httpx.Limits(max_connections=100)
+)
 
 async def get_current_user(
     request: Request,
