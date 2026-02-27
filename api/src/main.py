@@ -10,18 +10,19 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import uvicorn
 from fastapi import FastAPI
-from database import close_pool, create_pool
-from routers import auth, github, meetings, projects, tasks, notifications
+#from database import close_pool, create_pool
+from routers import auth, github
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Create the DB pool on startup and close it on shutdown."""
-    await create_pool()
-    yield
-    await close_pool()
+#@asynccontextmanager
+#async def lifespan(app: FastAPI):
+#    """Create the DB pool on startup and close it on shutdown."""
+#    await create_pool()
+#    yield
+#    await close_pool()
 
-app = FastAPI(title="Lunaris API", version="0.1.0", lifespan=lifespan)
+#app = FastAPI(title="Lunaris API", version="0.1.0", lifespan=lifespan)
 
+app = FastAPI(title="Lunaris API", version="0.1.0")
 @app.get("/")
 def read_root():
     return {"Message": "FastAPI is running!"}
