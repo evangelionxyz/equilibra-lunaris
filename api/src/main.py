@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from routers import auth, github
 from services.database.database import router as db_router, create_pool, close_pool
 from services.database import users as _db_users
@@ -27,6 +28,14 @@ async def lifespan(app: FastAPI):
     close_pool()
 
 app = FastAPI(title="Lunaris API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/")
 def read_root():
     return {"Message": "FastAPI is running!"}

@@ -8,10 +8,12 @@ import psycopg2.extras
 from services.database.database import _get_conn
 from services.database.database import _put_conn
 from services.database.database import router as db_router
+from services.database.id_generator import _generator
 
 class DatabaseProject(BaseModel):
     id: Optional[int] = None
     name: str
+    gh_repo_url: Optional[str] = None
     description: Optional[str] = None
     is_deleted: bool = False
     created_at: Optional[datetime] = None
@@ -27,7 +29,9 @@ def db_create_project(project: DatabaseProject):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         mapping = {
+            "id": _generator.generate(),
             "name": project.name,
+            "gh_repo_url": project.gh_repo_url,
             "description": project.description,
             "is_deleted": project.is_deleted,
         }
@@ -46,7 +50,7 @@ def db_create_project(project: DatabaseProject):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, description, is_deleted, created_at, updated_at, gh_repo_url;"
+        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -72,7 +76,7 @@ def db_get_projects():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, description, is_deleted, created_at, updated_at gh_repo_url, FROM public.projects;"
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at FROM public.projects;"
         )
         rows = cur.fetchall()
         return rows
@@ -89,13 +93,62 @@ def db_get_project_by_id(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, description, is_deleted, created_at, updated_at, gh_repo_url FROM public.projects WHERE id = %s LIMIT 1;",
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at FROM public.projects WHERE id = %s LIMIT 1;",
             (project_id,),
         )
         row = cur.fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Project not found")
         return row
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.put("/projects/{project_id}")
+def db_update_project(project_id: int, project_data: DatabaseProject):
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        update_data = project_data.dict(exclude_unset=True)
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No data provided for update")
+        
+        set_clause = ", ".join([f"{k} = %s" for k in update_data.keys()])
+        params = list(update_data.values())
+        params.append(project_id)
+        
+        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at;"
+        
+        cur.execute(sql, params)
+        conn.commit()
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return row
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.delete("/projects/{project_id}")
+def db_delete_project(project_id: int):
+    """Soft delete a project."""
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        sql = "UPDATE public.projects SET is_deleted = True, updated_at = NOW() WHERE id = %s RETURNING id;"
+        cur.execute(sql, (project_id,))
+        conn.commit()
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"id": project_id, "status": "deleted"}
     finally:
         if cur is not None:
             cur.close()
