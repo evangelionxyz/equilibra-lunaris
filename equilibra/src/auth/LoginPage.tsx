@@ -1,7 +1,6 @@
-import './LoginPage.css'
-import logo from '../assets/logo.png'
+import logo from '../assets/logo.png';
+import './LoginPage.css';
 
-/** GitHub mark SVG — inline so there's no extra asset dependency. */
 function GitHubMark() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-github" viewBox="0 0 16 16">
@@ -26,7 +25,6 @@ export function LoginPage() {
           <p>Use your GitHub account to access the task board.</p>
         </div>
 
-        {/* /api/auth/login is proxied to FastAPI, which redirects to GitHub */}
         <a href="/api/auth/login" className="login-btn">
           <GitHubMark />
           Continue with GitHub
