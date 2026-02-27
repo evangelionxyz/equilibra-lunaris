@@ -5,12 +5,12 @@ on:
     branches:
       - "**"
     paths:
-      - "frontend/**"
+      - "equilibra/**"
       - "api/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
-      - "frontend/**"
+      - "equilibra/**"
       - "api/**"
       - ".github/workflows/ci.yml"
 
