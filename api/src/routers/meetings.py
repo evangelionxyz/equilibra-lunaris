@@ -145,15 +145,19 @@ def _extract_json_object(raw_text: str) -> dict:
                     raise e
         raise
 
-def _parse_gemini_response(response: object) -> dict:
-    response_text = str(getattr(response, "text", "") or "").strip()
-    if not response_text:
-        # Check if it was returned as a parts[0].text
+async def _parse_gemini_response(response: object) -> dict:
+    # Use standard text extraction from response
+    try:
+        response_text = response.text
+    except Exception:
         try:
-            response_text = response.candidates[0].content.parts[0].text
+             response_text = response.candidates[0].content.parts[0].text
         except:
-            raise ValueError("Gemini response text is empty and cannot be extracted from candidates")
+             raise ValueError("Gagal mengekstrak teks dari respon Gemini")
     
+    if not response_text:
+        raise ValueError("Respon Gemini kosong")
+        
     return _extract_json_object(response_text)
 
 def _fallback_analysis_payload(reason: str) -> dict:
@@ -190,27 +194,26 @@ async def analyze_meeting_endpoint(
         mime_type = file.content_type
 
         try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    client.models.generate_content,
-                    model=MODEL_ID,
-                    contents=[
-                        GEMINI_SYSTEM_PROMPT,
-                        types.Part.from_bytes(data=input_bytes, mime_type=mime_type)
-                    ],
-                    config=types.GenerateContentConfig(response_mime_type="application/json")
-                ),
-                timeout=90.0 
+            # For audio/video, it's safer to use the File API if file is large, 
+            # but for now let's at least switch to async call
+            response = await client.aio.models.generate_content(
+                model=MODEL_ID,
+                contents=[
+                    GEMINI_SYSTEM_PROMPT,
+                    types.Part.from_bytes(data=input_bytes, mime_type=mime_type)
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2
+                )
             )
-        except asyncio.TimeoutError as exc:
-            print(f"Gemini timeout: {exc}")
-            return _fallback_analysis_payload("timeout")
         except Exception as exc:
             print(f"Gemini request failed: {exc}")
-            return _fallback_analysis_payload("request-error")
+            # If it's a connection error, it might be due to size.
+            return _fallback_analysis_payload(f"api-error: {str(exc)[:50]}")
 
         try:
-            analysis_result = _parse_gemini_response(response)
+            analysis_result = await _parse_gemini_response(response)
         except Exception as exc:
             print(f"Gemini JSON parse failed: {exc}")
             return _fallback_analysis_payload("invalid-json")
@@ -322,20 +325,19 @@ async def process_video_in_background(bot_id: str, user_uuid: str):
             
         print("🤖 [BACKGROUND] Video didownload, mengirim ke Gemini...")
         
-        response = await asyncio.wait_for(
-            asyncio.to_thread(
-                client.models.generate_content,
-                model=MODEL_ID,
-                contents=[
-                    GEMINI_SYSTEM_PROMPT,
-                    types.Part.from_bytes(data=video_res.content, mime_type="video/mp4")
-                ],
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            ),
-            timeout=180.0 
+        response = await client.aio.models.generate_content(
+            model=MODEL_ID,
+            contents=[
+                GEMINI_SYSTEM_PROMPT,
+                types.Part.from_bytes(data=video_res.content, mime_type="video/mp4")
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.1
+            )
         )
         
-        analysis_result = _parse_gemini_response(response)
+        analysis_result = await _parse_gemini_response(response)
         print("✅ [BACKGROUND] ANALISIS SELESAI!")
         
         # Prepare proposed tasks
