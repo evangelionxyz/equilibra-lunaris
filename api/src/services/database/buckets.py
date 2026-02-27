@@ -21,7 +21,7 @@ class DatabaseBucket(BaseModel):
 
 
 @db_router.post("/buckets")
-def db_create_bucket(bucket: DatabaseBucket):
+def db_create_bucket(item: DatabaseBucket):
     conn = _get_conn()
     cur = None
     try:
@@ -30,11 +30,11 @@ def db_create_bucket(bucket: DatabaseBucket):
         # fetch to the last idx
         mapping = {
             "id": _generator.generate(),
-            "project_id": bucket.project_id,
-            "state": bucket.state if bucket.state is not None else "",
-            "created_at": bucket.created_at,
-            "order_idx": bucket.order_idx if bucket.order_idx is not None else 0,
-            "is_deleted": bucket.is_deleted if bucket.is_deleted is not None else False,
+            "project_id": item.project_id,
+            "state": item.state,
+            "created_at": item.created_at,
+            "order_idx": item.order_idx,
+            "is_deleted": item.is_deleted,
         }
 
         columns = []
@@ -102,6 +102,41 @@ def db_get_bucket_by_id(project_id: int, bucket_id: int):
         if row is None:
             raise HTTPException(status_code=404, detail="Bucket not found")
         return row
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.put("/projects/{project_id}/buckets/reorder")
+def db_reorder_buckets(project_id: int, bucket_ids: list[int]):
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Defer constraints or do updates sequentially (to avoid unique constraint violations)
+        # We can temporarily set order_idx to negative values during the swap
+        
+        # Step 1: Set order_idx to negative equivalents based on the new array index
+        for idx, b_id in enumerate(bucket_ids):
+            cur.execute(
+                "UPDATE public.buckets SET order_idx = %s WHERE id = %s AND project_id = %s;",
+                (-(idx + 1000), b_id, project_id) # Offset to ensure no collision
+            )
+            
+        # Step 2: Set absolute new order_idx
+        for idx, b_id in enumerate(bucket_ids):
+            cur.execute(
+                "UPDATE public.buckets SET order_idx = %s, updated_at = NOW() WHERE id = %s AND project_id = %s;",
+                (idx, b_id, project_id)
+            )
+
+        conn.commit()
+        return {"status": "success", "order": bucket_ids}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if cur is not None:
             cur.close()

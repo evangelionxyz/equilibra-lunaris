@@ -9,7 +9,10 @@ interface KanbanColumnProps {
   description: string;
   statusText: string;
   taskCount: number;
-  onDropTask: (taskId: number, newStatus: string) => void;
+  onDropTask: (taskId: number, newBucketId: number, targetIndex?: number) => void;
+  onDragStartColumn?: (e: React.DragEvent<HTMLDivElement>, columnId: number) => void;
+  onDropColumn?: (e: React.DragEvent<HTMLDivElement>, targetColumnId: number) => void;
+  onAddTask?: (bucketId: number) => void;
   children: React.ReactNode;
 }
 
@@ -21,6 +24,9 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   statusText,
   taskCount,
   onDropTask,
+  onDragStartColumn,
+  onDropColumn,
+  onAddTask,
   children
 }) => {
   const [isOver, setIsOver] = React.useState(false);
@@ -35,28 +41,42 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
     setIsOver(false);
     const taskIdString = e.dataTransfer.getData('taskId');
+    const columnIdString = e.dataTransfer.getData('columnId');
+
     if (taskIdString) {
-      onDropTask(parseInt(taskIdString, 10), id);
+      e.preventDefault();
+      e.stopPropagation();
+      onDropTask(parseInt(taskIdString, 10), parseInt(id, 10));
+    } else if (columnIdString && onDropColumn) {
+      e.preventDefault();
+      e.stopPropagation();
+      onDropColumn(e, parseInt(id, 10));
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    if (onDragStartColumn) {
+      onDragStartColumn(e, parseInt(id, 10));
     }
   };
 
   return (
-  <div 
-    onDragOver={handleDragOver}
-    onDragLeave={handleDragLeave}
-    onDrop={handleDrop}
-    className={`min-w-[280px] w-[280px] border rounded-xl flex flex-col max-h-full transition-colors ${
-      isOver ? 'bg-[#1F2937]/50 border-[#3B82F6]' : 'bg-[#0B0E14] border-[#374151]'
-    }`}
-  >
-     <div className="p-4 border-b border-[#374151]">
+    <div
+      draggable={!!onDragStartColumn}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`min-w-[280px] w-[280px] border rounded-xl flex flex-col max-h-full transition-colors ${isOver ? 'bg-[#1F2937]/50 border-[#3B82F6]' : 'bg-[#0B0E14] border-[#374151]'
+        }`}
+    >
+      <div className="p-4 border-b border-[#374151]">
         <div className="flex justify-between items-start mb-2">
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full opacity-20 flex items-center justify-center ${colorClass.replace('bg-', 'text-')}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${colorClass}`}/>
+              <div className={`w-1.5 h-1.5 rounded-full ${colorClass}`} />
             </div>
             <h3 className="text-white font-bold text-[13px] uppercase tracking-wider">{name}</h3>
           </div>
@@ -64,12 +84,18 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
         </div>
         <p className="text-[10px] text-slate-400 mb-3">{description}</p>
         <Badge variant={statusText === 'RUNNING' ? 'success' : statusText === 'PAUSED' ? 'warning' : 'default'} className="!text-[8px] !py-0.5">
-          <CheckCircle2 size={10}/> {statusText}
+          <CheckCircle2 size={10} /> {statusText}
         </Badge>
-     </div>
-     <div className="p-3 overflow-y-auto space-y-3 no-scrollbar flex-1">
+      </div>
+      <div className="p-3 overflow-y-auto space-y-3 no-scrollbar flex-1 relative min-h-[100px]">
         {children}
-     </div>
-  </div>
+        <button
+          onClick={() => onAddTask && onAddTask(parseInt(id, 10))}
+          className="w-full mt-2 py-2 flex items-center justify-center gap-1.5 text-slate-500 hover:text-white border border-dashed border-[#374151] hover:border-[#3B82F6] hover:bg-[#1F2937]/30 rounded-lg transition-all text-[12px] font-medium"
+        >
+          <span className="text-xl leading-none">+</span> Add Task
+        </button>
+      </div>
+    </div>
   );
 };

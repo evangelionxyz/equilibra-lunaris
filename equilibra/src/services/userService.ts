@@ -1,9 +1,13 @@
 import { apiFetch } from "./apiClient";
-import type { User, ProjectMember, Role } from "../models";
+import type { User, ProjectMember } from "../models";
 
 export const userService = {
   getUsers: async (): Promise<User[]> => {
     return await apiFetch<User[]>("/users");
+  },
+
+  searchUsers: async (username: string): Promise<User[]> => {
+    return await apiFetch<User[]>(`/users?username=${encodeURIComponent(username)}`);
   },
 
   getProjectMembers: async (projectId: number): Promise<ProjectMember[]> => {
@@ -18,14 +22,14 @@ export const userService = {
       .map((u) => ({
         user_id: u.id!,
         project_id: projectId,
-        role: "PROGRAMMER" as Role,
+        role: "PROGRAMMER",
         kpi_score: 85,
         max_capacity: 100,
         current_load: 40,
       }));
   },
 
-  getMembershipsForUser: async (userId: number): Promise<ProjectMember[]> => {
+  getMembershipsForUser: async (): Promise<ProjectMember[]> => {
     return await apiFetch<ProjectMember[]>("/users/me/project_members");
   },
 

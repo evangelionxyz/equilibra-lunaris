@@ -25,6 +25,7 @@ class DatabaseTask(BaseModel):
     branch_name: Optional[str] = None
     last_activity_at: Optional[datetime] = None
     is_deleted: bool = False
+    order_idx: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -35,6 +36,13 @@ def db_create_task(task: DatabaseTask):
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Generate new order_idx if missing
+        assigned_order_idx = task.order_idx
+        if assigned_order_idx is None and task.bucket_id is not None:
+            cur.execute("SELECT COALESCE(MAX(order_idx), -1) + 1 AS next_idx FROM public.tasks WHERE bucket_id = %s;", (task.bucket_id,))
+            row = cur.fetchone()
+            assigned_order_idx = row['next_idx'] if row else 0
 
         # fetch to the last idx
         mapping = {
@@ -52,6 +60,7 @@ def db_create_task(task: DatabaseTask):
             "branch_name": task.branch_name,
             "last_activity_at": task.last_activity_at,
             "is_deleted": task.is_deleted,
+            "order_idx": assigned_order_idx,
         }
 
         columns = []
@@ -68,7 +77,7 @@ def db_create_task(task: DatabaseTask):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, created_at, updated_at;"
+        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, order_idx, created_at, updated_at;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -109,7 +118,7 @@ def db_get_task_by_id(task_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, created_at, updated_at FROM public.tasks WHERE id = %s LIMIT 1;",
+            "SELECT id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, order_idx, created_at, updated_at FROM public.tasks WHERE id = %s LIMIT 1;",
             (task_id,),
         )
         row = cur.fetchone()
@@ -137,7 +146,7 @@ def db_update_task(task_id: int, task_data: DatabaseTask):
         params = list(update_data.values())
         params.append(task_id)
         
-        sql = f"UPDATE public.tasks SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, created_at, updated_at;"
+        sql = f"UPDATE public.tasks SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, order_idx, created_at, updated_at;"
         
         cur.execute(sql, params)
         conn.commit()
@@ -165,6 +174,49 @@ def db_delete_task(task_id: int):
         if row is None:
             raise HTTPException(status_code=404, detail="Task not found")
         return {"id": task_id, "status": "deleted"}
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+@db_router.put("/projects/{project_id}/buckets/{bucket_id}/tasks/reorder")
+def db_reorder_tasks(project_id: int, bucket_id: int, task_ids: list[int]):
+    """Batch reorder tasks inside a specific bucket."""
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Verify tasks belong to the project
+        cur.execute(
+            "SELECT id FROM public.tasks WHERE project_id = %s AND id = ANY(%s);",
+            (project_id, task_ids)
+        )
+        valid_tasks = set(row['id'] for row in cur.fetchall())
+        invalid_tasks = set(task_ids) - valid_tasks
+        if invalid_tasks:
+            raise HTTPException(status_code=400, detail=f"Invalid task IDs for this project: {invalid_tasks}")
+            
+        # Step 1: Push out of the valid constraint range to avoid conflicts
+        for idx, t_id in enumerate(task_ids):
+            cur.execute(
+                "UPDATE public.tasks SET order_idx = %s, bucket_id = %s WHERE id = %s AND project_id = %s;",
+                (-(idx + 1000), bucket_id, t_id, project_id)
+            )
+
+        # Step 2: Set absolute new order_idx within the same bucket
+        for idx, t_id in enumerate(task_ids):
+            cur.execute(
+                "UPDATE public.tasks SET order_idx = %s, updated_at = NOW() WHERE id = %s AND project_id = %s;",
+                (idx, t_id, project_id)
+            )
+
+        conn.commit()
+        return {"status": "success", "order": task_ids, "bucket_id": bucket_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if cur is not None:
             cur.close()

@@ -21,6 +21,7 @@ class DatabaseProject(BaseModel):
     is_deleted: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    roles: Optional[list[str]] = Field(default_factory=list)
 
 
 @db_router.post("/projects")
@@ -36,6 +37,7 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
             "gh_repo_url": project.gh_repo_url,
             "description": project.description,
             "is_deleted": project.is_deleted,
+            "roles": project.roles,
         }
 
         columns = []
@@ -52,7 +54,7 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at;"
+        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles;"
 
         cur.execute(sql, params)
         row = cur.fetchone()
@@ -81,7 +83,7 @@ def db_get_projects():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at FROM public.projects;"
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles FROM public.projects;"
         )
         rows = cur.fetchall()
         return rows
@@ -118,7 +120,7 @@ def db_get_projects_for_current_user(current_user: dict = Depends(get_current_us
             return []
 
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at FROM public.projects WHERE id = ANY(%s);",
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles FROM public.projects WHERE id = ANY(%s);",
             (project_ids,)
         )
         projects = cur.fetchall()
@@ -136,7 +138,7 @@ def db_get_project_by_id(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at FROM public.projects WHERE id = %s LIMIT 1;",
+            "SELECT id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles FROM public.projects WHERE id = %s LIMIT 1;",
             (project_id,),
         )
         row = cur.fetchone()
@@ -164,7 +166,7 @@ def db_update_project(project_id: int, project_data: DatabaseProject):
         params = list(update_data.values())
         params.append(project_id)
         
-        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at;"
+        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles;"
         
         cur.execute(sql, params)
         conn.commit()
@@ -180,17 +182,29 @@ def db_update_project(project_id: int, project_data: DatabaseProject):
 
 @db_router.delete("/projects/{project_id}")
 def db_delete_project(project_id: int):
-    """Soft delete a project."""
+    """Delete a project and its associated members."""
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        sql = "UPDATE public.projects SET is_deleted = True, updated_at = NOW() WHERE id = %s RETURNING id;"
+        
+        # 1. Delete all members of this project
+        cur.execute("DELETE FROM public.project_member WHERE project_id = %s;", (project_id,))
+        
+        # 2. Delete the project itself
+        # Alternatively, soft delete: "UPDATE public.projects SET is_deleted = True, updated_at = NOW() WHERE id = %s RETURNING id;"
+        # We'll use hard delete to be consistent with member deletion, or stick to the original soft delete.
+        # "we need to remove all of the members ... and also delete the project"
+        sql = "DELETE FROM public.projects WHERE id = %s RETURNING id, name, gh_repo_url, description, is_deleted, created_at, updated_at, roles;"
         cur.execute(sql, (project_id,))
-        conn.commit()
+        
         row = cur.fetchone()
         if row is None:
+            conn.rollback()
             raise HTTPException(status_code=404, detail="Project not found")
+            
+        conn.commit()
+        return {"id": project_id, "status": "deleted"}
         return {"id": project_id, "status": "deleted"}
     finally:
         if cur is not None:

@@ -23,6 +23,7 @@ class DatabaseProjectMember(BaseModel):
     kpi_score: Optional[float] = None
     max_capacity: Optional[int] = None
     current_load: Optional[int] = None
+    gh_username: Optional[str] = None
 
 
 @db_router.post("/projects/{project_id}/members")
@@ -42,6 +43,7 @@ def db_create_member(project_id: int, member: DatabaseProjectMember):
             "kpi_score": member.kpi_score,
             "max_capacity": member.max_capacity,
             "current_load": member.current_load,
+            "gh_username": member.gh_username,
         }
 
         columns = []
@@ -58,22 +60,17 @@ def db_create_member(project_id: int, member: DatabaseProjectMember):
 
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.project_member ({cols_sql}) VALUES ({vals_sql}) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load;"
+        sql = f"INSERT INTO public.project_member ({cols_sql}) VALUES ({vals_sql}) RETURNING id, user_id, project_id, role, kpi_score, max_capacity, current_load, gh_username;"
 
-        logger.debug("Executing SQL: %s params=%s", sql, params)
         cur.execute(sql, params)
         conn.commit()
         row = cur.fetchone()
-        logger.info("db_create_member inserted id=%s", row and row.get("id"))
-        print(f"[DEBUG] db_create_member inserted row={row}")
         return row
     except HTTPException:
         conn.rollback()
         raise
     except Exception as e:
-        logger.exception("Error creating project_member: %s", e)
         conn.rollback()
-        print(f"[DEBUG] db_create_member error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if cur is not None:
@@ -94,7 +91,12 @@ def db_get_my_project_members(current_user: dict = Depends(get_current_user)):
 
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE user_id = %s",
+            """
+            SELECT pm.id, pm.user_id, pm.project_id, pm.role, pm.kpi_score, pm.max_capacity, pm.current_load, u.gh_username
+            FROM public.project_member pm
+            LEFT JOIN public.users u ON pm.user_id = u.id
+            WHERE pm.user_id = %s
+            """,
             (db_user_id,)
         )
         rows = cur.fetchall()
@@ -112,7 +114,12 @@ def db_get_members(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id = %s",
+            """
+            SELECT pm.id, pm.user_id, pm.project_id, pm.role, pm.kpi_score, pm.max_capacity, pm.current_load, u.gh_username
+            FROM public.project_member pm
+            LEFT JOIN public.users u ON pm.user_id = u.id
+            WHERE pm.project_id = %s
+            """,
             (project_id,)
         )
         rows = cur.fetchall()
@@ -130,7 +137,12 @@ def db_get_member_by_id(project_id: int, member_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, user_id, project_id, role, kpi_score, max_capacity, current_load FROM public.project_member WHERE project_id = %s AND user_id = %s LIMIT 1;",
+            """
+            SELECT pm.id, pm.user_id, pm.project_id, pm.role, pm.kpi_score, pm.max_capacity, pm.current_load, u.gh_username
+            FROM public.project_member pm
+            LEFT JOIN public.users u ON pm.user_id = u.id
+            WHERE pm.project_id = %s AND pm.user_id = %s LIMIT 1;
+            """,
             (project_id, member_id),
         )
         row = cur.fetchone()

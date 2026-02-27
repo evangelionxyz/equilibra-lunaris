@@ -31,4 +31,11 @@ export const taskService = {
       method: "DELETE",
     });
   },
+
+  reorderTasks: async (projectId: number, bucketId: number, taskIds: number[]): Promise<{ status: string; order: number[]; bucket_id: number }> => {
+    return await apiFetch(`/projects/${projectId}/buckets/${bucketId}/tasks/reorder`, {
+      method: "PUT",
+      body: JSON.stringify(taskIds),
+    });
+  },
 };
