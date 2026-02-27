@@ -41,6 +41,33 @@ export interface ProjectMember {
   role: Role;
   kpi_score: number; // VISIBLE TIER
   max_capacity: number;
+  current_load: number; // For workload distribution chart
+}
+
+export interface Activity {
+  id: number;
+  project_id: number;
+  user_name: string;
+  action: string; // e.g., 'pushed', 'moved', 'generated'
+  target: string; // e.g., 'auth-v2', 'Task A to QA'
+  created_at: string;
+}
+
+export interface ProjectMetric {
+  id: number;
+  project_id: number;
+  label: string; // e.g., 'Code Review Cycle'
+  value: string; // e.g., '48h'
+  progress: number; // 0-100
+  status: "critical" | "warning" | "success" | "default";
+  target_label: string; // e.g., 'Target < 12h'
+}
+
+export interface UserProjectStats {
+  user_id: number;
+  project_id: number;
+  points_completed: number;
+  velocity_percentile: number;
 }
 
 export interface Meeting {
@@ -89,9 +116,12 @@ export interface TaskAssignee {
 export interface Alert {
   id: number;
   user_id: number;
+  project_id: number;
   title: string;
   description: string;
   type: AlertType;
+  severity: "critical" | "warning" | "info";
+  suggested_actions: string[];
   is_resolved: boolean;
   created_at: string;
 }

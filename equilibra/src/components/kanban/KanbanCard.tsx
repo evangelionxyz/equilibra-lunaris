@@ -3,7 +3,7 @@ import { Badge } from '../../design-system/Badge';
 import { Clock, GitPullRequest, MoreHorizontal, UserCircle2 } from 'lucide-react';
 
 interface KanbanCardProps {
-  id?: string;
+  id: number;
   title: string;
   type: string;
   weight: string;
@@ -15,6 +15,7 @@ interface KanbanCardProps {
 }
 
 export const KanbanCard: React.FC<KanbanCardProps> = ({ 
+  id,
   title, 
   type, 
   weight, 
@@ -22,10 +23,19 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
   warnStagnant, 
   isSuggested, 
   pr 
-}) => (
-  <div className={`p-4 rounded-xl bg-[#151A22] border group flex flex-col gap-3 shadow-sm ${warnStagnant ? 'border-[#EF4444]' : isSuggested ? 'border-[#F59E0B]' : 'border-[#374151] hover:border-[#3B82F6]'} transition-all cursor-grab active:cursor-grabbing`}>
-    <div className="text-white text-[13px] font-semibold leading-snug">{title}</div>
-    <p className="text-[10px] text-slate-400">Add theme switcher to user settings and sync with system preferences.</p>
+}) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.setData('taskId', id.toString());
+  };
+
+  return (
+    <div 
+      draggable
+      onDragStart={handleDragStart}
+      className={`p-4 rounded-xl bg-[#151A22] border group flex flex-col gap-3 shadow-sm ${warnStagnant ? 'border-[#EF4444]' : isSuggested ? 'border-[#F59E0B]' : 'border-[#374151] hover:border-[#3B82F6]'} transition-all cursor-grab active:cursor-grabbing`}
+    >
+      <div className="text-white text-[13px] font-semibold leading-snug">{title}</div>
+      <p className="text-[10px] text-slate-400">Add theme switcher to user settings and sync with system preferences.</p>
     
     <div className="flex gap-2 flex-wrap mt-1">
       <Badge variant={type === 'CODE' ? 'primary' : 'default'} className="!py-0.5 !px-1.5 !text-[8px]">
@@ -57,4 +67,5 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
       <MoreHorizontal size={14} className="text-slate-400" />
     </div>
   </div>
-);
+  );
+};

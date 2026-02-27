@@ -6,7 +6,6 @@ interface SurfaceCardProps {
   title?: string;
   subtitle?: string;
   rightElement?: React.ReactNode;
-  borderHighlight?: string;
   icon?: React.ElementType;
 }
 
@@ -16,12 +15,11 @@ export const SurfaceCard: React.FC<SurfaceCardProps> = ({
   title, 
   subtitle, 
   rightElement, 
-  borderHighlight = "", 
   icon: Icon 
 }) => (
-  <div className={`bg-[#151A22] border border-[#374151] rounded-xl p-5 relative ${borderHighlight} ${className}`}>
+  <div className={`p-6 rounded-2xl border border-[#374151] bg-[#151A22] shadow-sm flex flex-col ${className}`}>
     {(title || rightElement || Icon) && (
-      <div className="flex justify-between items-start mb-5">
+      <div className="flex justify-between items-start mb-6 flex-shrink-0">
         <div className="flex items-center gap-3">
           {Icon && (
             <div className="p-2 rounded-lg bg-[#1F2937] text-[#3B82F6] border border-[#374151] flex-shrink-0">

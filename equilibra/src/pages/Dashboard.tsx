@@ -14,12 +14,17 @@ import { Button } from '../design-system/Button';
 import { UrgentActions } from '../components/dashboard/UrgentActions';
 import { MyQueue } from '../components/dashboard/MyQueue';
 import { CriticalWatchlist } from '../components/dashboard/CriticalWatchlist';
+import { useAuth } from '../auth/useAuth';
+import { getDisplayName } from '../auth/displayName';
 
 interface DashboardPageProps {
   setPage: (page: string) => void;
+  setProject: (id: number) => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage, setProject }) => {
+  const { user } = useAuth();
+  const displayName = user ? getDisplayName(user) : '…';
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const currentMonthDays = Array.from({ length: 31 }, (_, i) => ({ day: i + 1, isCurrent: true }));
   const nextMonthDays = Array.from({ length: 4 }, (_, i) => ({ day: i + 1, isCurrent: false }));
@@ -47,7 +52,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage }) => {
             <span className="text-[#3B82F6] text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 mb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-pulse" /> Overview • Personal Space
             </span>
-            <h1 className="text-[32px] font-bold text-white leading-tight">Halo, Budi.</h1>
+            <h1 className="text-[32px] font-bold text-white leading-tight">Halo, {displayName}.</h1>
             <p className="text-[14px] italic text-slate-400 mt-1">Hari ini terasa seimbang.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -126,14 +131,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ setPage }) => {
         </div>
 
         {/* Action Columns - Right Column */}
-        <div className="xl:col-span-4 space-y-6 flex flex-col relative z-0">
-          <UrgentActions />
-          <MyQueue />
+        <div className="xl:col-span-4 space-y-6 flex flex-col min-h-0 max-h-[750px] relative z-0">
+          <UrgentActions className="flex-1 min-h-0" onNavigateProject={(id) => { setProject(id); setPage('project'); }} />
+          <MyQueue className="flex-1 min-h-0" />
         </div>
       </div>
 
       {/* Critical Watchlist - Bottom Row */}
-      <CriticalWatchlist />
+      <CriticalWatchlist onNavigate={(id) => { setProject(id); setPage('project'); }} />
     </div>
   );
 };
