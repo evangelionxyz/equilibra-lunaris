@@ -21,6 +21,7 @@ class DatabaseTask(BaseModel):
     updated_at: Optional[datetime] = None
     project_id: Optional[int] = None
     order_idx: Optional[int] = None
+    due_date: Optional[datetime] = None
     is_deleted: Optional[bool] = False
 
 
@@ -58,7 +59,7 @@ def db_create_task(task: DatabaseTask):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, bucket_id, parent_task, title, description, assign_ids, is_completed, created_at, updated_at, project_id, order_idx, is_deleted;"
+        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, bucket_id, parent_task, title, description, assign_ids, is_completed, created_at, updated_at, project_id, order_idx, due_date, is_deleted;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -99,7 +100,7 @@ def db_get_task_by_id(task_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, bucket_id, parent_task_id, title, description, assign_ids, is_completed, created_at, updated_at, project_id, order_idx, is_deleted FROM public.tasks WHERE id = %s LIMIT 1;",
+            "SELECT id, bucket_id, parent_task_id, title, description, assign_ids, is_completed, created_at, updated_at, project_id, order_idx, due_date, is_deleted FROM public.tasks WHERE id = %s LIMIT 1;",
             (task_id,),
         )
         row = cur.fetchone()
