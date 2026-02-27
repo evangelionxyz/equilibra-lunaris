@@ -3,7 +3,7 @@ import json
 import secrets
 import re
 import fastapi
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, BackgroundTasks
 import httpx
 from google import genai
 from google.genai import types
@@ -218,9 +218,79 @@ async def invite_meeting_bot(meeting_url: str):
         
     return {"status": "bot_joining", "bot_id": response.json()["id"]}
 
+# ==========================================
+# FUNGSI PEKERJA BELAKANG LAYAR (BACKGROUND TASK)
+# ==========================================
+async def process_video_in_background(bot_id: str):
+    print(f"🔍 [BACKGROUND] Mengambil detail video untuk Bot ID: {bot_id}...")
+    headers = {
+        "Authorization": f"Token {settings.recall_api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client_http:
+            api_url = f"https://ap-northeast-1.recall.ai/api/v1/bot/{bot_id}"
+            bot_res = await client_http.get(api_url, headers=headers)
+            
+            if bot_res.status_code != 200:
+                print(f"❌ [BACKGROUND] Gagal mengambil data bot: {bot_res.text}")
+                return
+            
+            bot_detail = bot_res.json()
+            
+            # Ekstrak URL Video
+            video_url = None
+            recordings = bot_detail.get("recordings", [])
+            if recordings:
+                media = recordings[0].get("media_shortcuts", {})
+                video_mixed = media.get("video_mixed", {})
+                if video_mixed and video_mixed.get("data"):
+                    video_url = video_mixed["data"].get("download_url")
+            
+            if not video_url:
+                print("⚠️ [BACKGROUND] Video URL kosong di data bot.")
+                return
+                
+            print(f"🎥 [BACKGROUND] Video URL ditemukan! Mendownload...")
+            video_res = await client_http.get(video_url, timeout=120.0)
+            
+        print("🤖 [BACKGROUND] Video didownload, mengirim ke Gemini...")
+        
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.models.generate_content,
+                model=MODEL_ID,
+                contents=[
+                    GEMINI_SYSTEM_PROMPT,
+                    types.Part.from_bytes(data=video_res.content, mime_type="video/mp4")
+                ],
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            ),
+            timeout=120.0 
+        )
+        
+        analysis_result = _parse_gemini_response(response)
+        
+        print("✅ [BACKGROUND] ANALISIS SELESAI!")
+        
+        # Simpan ke Database
+        await create_meeting_for_user(
+            user_uuid=MOCK_USER_UUID,
+            title=analysis_result["mom"]["judul_meeting"],
+            mom_content=json.dumps(analysis_result)
+        )
+        print("💾 [BACKGROUND] Data berhasil disimpan ke Database.")
+        
+    except Exception as e:
+        print(f"❌ [BACKGROUND] Gagal memproses: {str(e)}")
 
+
+# ==========================================
+# ENDPOINT WEBHOOK UTAMA (CEPAT TANGGAP)
+# ==========================================
 @router.post("/webhooks/recall", include_in_schema=False)
-async def recall_webhook(request: Request):
+async def recall_webhook(request: Request, background_tasks: BackgroundTasks):
     try:
         data = await request.json()
     except Exception:
@@ -232,84 +302,17 @@ async def recall_webhook(request: Request):
     print(f"==============================")
     
     if event_type == "bot.done":
-        # 1. Ambil Bot ID dari payload webhook
         bot_id = data.get("data", {}).get("bot", {}).get("id")
         
         if not bot_id:
             print("❌ Bot ID tidak ditemukan di webhook.")
             return {"status": "error"}
 
-        print(f"🔍 Mengambil detail video untuk Bot ID: {bot_id}...")
+        # Langsung lemparkan tugas berat ke background task
+        background_tasks.add_task(process_video_in_background, bot_id)
         
-        # 2. Minta data lengkap (termasuk video_url) ke server Recall
-        headers = {
-            "Authorization": f"Token {settings.recall_api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        try:
-            async with httpx.AsyncClient() as client_http:
-                # Pastikan region Tokyo!
-                api_url = f"https://ap-northeast-1.recall.ai/api/v1/bot/{bot_id}"
-                bot_res = await client_http.get(api_url, headers=headers)
-                
-                if bot_res.status_code != 200:
-                    print(f"❌ Gagal mengambil data bot dari Recall: {bot_res.text}")
-                    return {"status": "error"}
-                
-                bot_detail = bot_res.json()
-                
-                # --- PERBAIKAN CARA MENGAMBIL URL VIDEO ---
-                video_url = None
-                recordings = bot_detail.get("recordings", [])
-                
-                if recordings:
-                    # Masuk ke struktur JSON yang dalam untuk mengambil download_url
-                    media = recordings[0].get("media_shortcuts", {})
-                    video_mixed = media.get("video_mixed", {})
-                    if video_mixed and video_mixed.get("data"):
-                        video_url = video_mixed["data"].get("download_url")
-                # ------------------------------------------
-                
-                if not video_url:
-                    print("⚠️ Video URL belum tersedia/kosong di data bot.")
-                    return {"status": "no_video"}
-                    
-                print(f"🎥 Video URL ditemukan! Mendownload...")
-                
-                # 3. Lanjut proses download video & analisis Gemini
-                video_res = await client_http.get(video_url, timeout=120.0)
-                
-            print("🤖 Video didownload, mengirim ke Gemini...")
-            
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    client.models.generate_content,
-                    model=MODEL_ID,
-                    contents=[
-                        GEMINI_SYSTEM_PROMPT,
-                        types.Part.from_bytes(data=video_res.content, mime_type="video/mp4")
-                    ],
-                    config=types.GenerateContentConfig(response_mime_type="application/json")
-                ),
-                timeout=120.0 
-            )
-            
-            analysis_result = _parse_gemini_response(response)
-            
-            print("✅ ANALISIS SELESAI!")
-            print(json.dumps(analysis_result, indent=2))
-            
-            # BYPASS: Simpan ke mock db
-            await create_meeting_for_user(
-                user_uuid=MOCK_USER_UUID,
-                title=analysis_result["mom"]["judul_meeting"],
-                mom_content=json.dumps(analysis_result)
-            )
-            return {"status": "processed", "data": analysis_result}
-            
-        except Exception as e:
-            print(f"❌ Gagal memproses: {str(e)}")
-            return {"status": "error", "detail": str(e)}
+        print("⚡ Merespons Recall.ai secepat kilat agar tidak timeout...")
+        # Return 200 OK ke Recall seketika itu juga!
+        return {"status": "accepted", "message": "Proses AI sedang berjalan di latar belakang"}
 
     return {"status": "ignored", "event": event_type}

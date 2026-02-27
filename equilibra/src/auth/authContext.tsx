@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useContext, useCallback, type ReactNode } from "react"
+import { createContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { fetchCurrentUser, postLogout, type GitHubUser } from "./api"
 
 interface AuthState {
@@ -10,7 +10,7 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<GitHubUser | null>(null);
     const [isLoading, setIsLoading] = useState(true)
 
@@ -49,8 +49,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return <AuthContext.Provider value={{ user, isLoading, logout, refreshUser }}>{children}</AuthContext.Provider>
 }
 
-export function useAuth(): AuthState {
-    const ctx = useContext(AuthContext)
-    if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
-      return ctx
-}
+export {AuthContext, AuthProvider}
