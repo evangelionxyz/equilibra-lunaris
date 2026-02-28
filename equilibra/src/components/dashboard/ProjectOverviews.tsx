@@ -6,9 +6,9 @@ import {
   TrendingDown,
   GitPullRequest,
   Clock,
-  CheckCircle2,
   Zap,
-  Target
+  Target,
+  GitBranch
 } from 'lucide-react';
 import { SurfaceCard } from '../../design-system/SurfaceCard';
 import { Button } from '../../design-system/Button';
@@ -280,13 +280,6 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
     await onDropTask(taskId, ongoingBucket.id!);
   };
 
-  const handleMarkDone = async (task: Task) => {
-    const reviewBucket = buckets.find(b => b.state === 'ON_REVIEW');
-    const completedBucket = buckets.find(b => b.state === 'COMPLETED');
-    const targetBucketId = reviewBucket?.id || completedBucket?.id;
-    if (!targetBucketId) return;
-    await onDropTask(task.id!, targetBucketId);
-  };
 
   const getTimeAgo = (dateStr: string) => {
     // eslint-disable-next-line react-hooks/purity
@@ -315,7 +308,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
               <span className="text-[12px] text-slate-400 font-medium">Started {activeTask.last_activity_at ? getTimeAgo(String(activeTask.last_activity_at)) : 'Recently'}</span>
             </div>
             <div className="flex gap-4">
-              <Button variant="success" onClick={() => handleMarkDone(activeTask)}><CheckCircle2 size={16} /> Mark as Done</Button>
+              <Button variant="success" onClick={() => handleStartWork(activeTask.id!)}><GitBranch size={16} /> Ready to Code</Button>
               <Button variant="outline" className="text-[#EF4444] border-[#EF4444]/30"><AlertCircle size={16} /> Report Blocker</Button>
             </div>
           </SurfaceCard>
@@ -325,7 +318,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
             <h3 className="text-white font-bold text-[18px]">Ready to start?</h3>
             <p className="text-slate-400 text-[14px] mt-2 mb-6">You don't have an active task for this project.</p>
             {myQueueTasks.length > 0 && (
-              <Button variant="primary" onClick={() => handleStartWork(myQueueTasks[0].id!)}>Start Deep Work: {myQueueTasks[0].title}</Button>
+              <Button variant="primary" onClick={() => handleStartWork(myQueueTasks[0].id!)}>Ready to Code: {myQueueTasks[0].title}</Button>
             )}
             {myQueueTasks.length === 0 && (
               <p className="text-slate-500 text-[12px]">No tasks assigned to you in the queue.</p>
