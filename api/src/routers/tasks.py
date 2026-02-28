@@ -65,27 +65,51 @@ def batch_review_tasks(payload: BatchReviewPayload):
             )
 
         # ------------------------------------------------------------------
-        # Step 2: Batch-insert tasks (bucket_id=1 Default Backlog, status=DRAFT)
+        # Step 1.5: Find the first bucket for the project
+        # ------------------------------------------------------------------
+        cur.execute(
+            "SELECT id FROM public.buckets WHERE project_id = %s ORDER BY order_idx ASC LIMIT 1;",
+            (payload.project_id,)
+        )
+        bucket_row = cur.fetchone()
+        if bucket_row is None:
+            raise HTTPException(status_code=400, detail="Project has no buckets to insert tasks into.")
+
+        target_bucket_id = bucket_row["id"]
+
+        # ------------------------------------------------------------------
+        # Step 1.6: Find the max order_idx for the target bucket
+        # ------------------------------------------------------------------
+        cur.execute(
+            "SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM public.tasks WHERE bucket_id = %s;",
+            (target_bucket_id,)
+        )
+        max_idx_row = cur.fetchone()
+        start_order_idx = max_idx_row["max_idx"] + 1
+
+        # ------------------------------------------------------------------
+        # Step 2: Batch-insert tasks (bucket_id=target_bucket_id, status=DRAFT)
         # ------------------------------------------------------------------
         insert_sql = """
             INSERT INTO public.tasks (
                 id, project_id, bucket_id, lead_assignee_id,
-                title, description, type, weight, status
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+                title, description, type, weight, status, order_idx
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
         records = [
             (
                 _generator.generate(),   # snowflake id
                 payload.project_id,
-                1,                        # forced: Default Backlog
+                target_bucket_id,
                 item.assignee_id,
                 item.title,
                 item.description,
                 item.type,
                 item.weight,
                 "DRAFT",                  # forced: status
+                start_order_idx + i,
             )
-            for item in payload.tasks
+            for i, item in enumerate(payload.tasks)
         ]
         cur.executemany(insert_sql, records)
 

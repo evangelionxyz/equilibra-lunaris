@@ -89,8 +89,10 @@ def db_get_meetings_by_project(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
+        # mom_summary and key_decisions are LAZY LOAD — omitted here intentionally.
+        # Fetch them individually via GET /db-meetings/{id}.
         sql = """
-            SELECT id, project_id, user_uuid, title, date, time, duration, source_type, mom_summary, key_decisions, action_items, created_at
+            SELECT id, project_id, user_uuid, title, date, time, duration, source_type, action_items, created_at
             FROM public.meetings 
             WHERE project_id = %s
             ORDER BY created_at DESC;
@@ -99,8 +101,6 @@ def db_get_meetings_by_project(project_id: int):
         rows = cur.fetchall()
         
         for row in rows:
-             if isinstance(row.get("key_decisions"), str):
-                 row["key_decisions"] = json.loads(row["key_decisions"])
              if isinstance(row.get("action_items"), str):
                  row["action_items"] = json.loads(row["action_items"])
                  

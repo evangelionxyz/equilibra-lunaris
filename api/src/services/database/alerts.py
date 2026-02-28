@@ -117,6 +117,30 @@ def db_get_alerts():
 
 
 # ---------------------------------------------------------------------------
+# GET /users/{user_id}/alerts  — Urgent Inbox Data Contract
+# Returns only unresolved alerts. is_resolved is NEVER in the response.
+# ---------------------------------------------------------------------------
+@db_router.get("/users/{user_id}/alerts")
+def db_get_alerts_for_user(user_id: str):
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT id, type, context_id, created_at "
+            "FROM public.alerts WHERE user_id = %s AND is_resolved = FALSE "
+            "ORDER BY created_at DESC;",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        return rows
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+# ---------------------------------------------------------------------------
 # GET /alerts/{alert_id}
 # ---------------------------------------------------------------------------
 @db_router.get("/alerts/{alert_id}")

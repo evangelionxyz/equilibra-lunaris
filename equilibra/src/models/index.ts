@@ -46,10 +46,6 @@ export interface Project {
   tags?: string[];
   isLead?: boolean;
   tasksPending?: number;
-  roles?: string[];
-  completed_bucket_id?: number | string;
-  in_review_bucket_id?: number | string;
-  todo_bucket_id?: number | string;
 }
 
 export interface ProjectMember {

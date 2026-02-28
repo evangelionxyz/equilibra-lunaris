@@ -223,7 +223,7 @@ async def process_review_kpi(payload: dict, pool=None):
 
 
 
-def find_project_buckets(repo_url: str):
+def find_project_bucket_by_state(repo_url: str, target_state: str):
     conn = _get_conn()
     cur = None
     try:
@@ -235,10 +235,15 @@ def find_project_buckets(repo_url: str):
         project_row = cur.fetchone()
         if not project_row: return None
         
-        cur.execute("SELECT id, state FROM public.buckets WHERE project_id = %s AND is_deleted = False;", (project_row["id"],))
-        buckets = cur.fetchall()
-        bucket_map = {b["state"]: b["id"] for b in buckets}
-        return project_row["id"], bucket_map
+        # The Magic Query
+        cur.execute(
+            "SELECT id FROM public.buckets WHERE project_id = %s AND state = %s AND is_deleted = False ORDER BY order_idx ASC LIMIT 1;", 
+            (project_row["id"], target_state)
+        )
+        bucket_row = cur.fetchone()
+        
+        bucket_id = bucket_row["id"] if bucket_row else None
+        return project_row["id"], bucket_id
     finally:
         if cur is not None:
             cur.close()
@@ -268,17 +273,18 @@ async def handle_pr_closed(payload: dict):
     if not repo_url or not branch_name:
         return
 
-    project_data = find_project_buckets(repo_url)
+    is_merged = pr.get("merged", False)
+    target_state = 'COMPLETED' if is_merged else 'ONGOING'
+
+    project_data = find_project_bucket_by_state(repo_url, target_state)
     if not project_data: return
-    project_id, bucket_map = project_data
+    project_id, target_bucket_id = project_data
 
     task = find_task_by_branch(project_id, branch_name)
     if not task: return
-
-    is_merged = pr.get("merged", False)
-    target_bucket_id = bucket_map.get("COMPLETED") if is_merged else bucket_map.get("ONGOING")
     
     if not target_bucket_id:
+        logger.error(f"Project {project_id} is missing a bucket with state '{target_state}'")
         return
 
     try:
@@ -304,12 +310,13 @@ async def handle_pr_opened(payload: dict):
     if not repo_url or not branch_name:
         return
 
-    project_data = find_project_buckets(repo_url)
+    project_data = find_project_bucket_by_state(repo_url, "ON_REVIEW")
     if not project_data: return
-    project_id, bucket_map = project_data
+    project_id, target_bucket_id = project_data
     
-    target_bucket_id = bucket_map.get("ON_REVIEW")
-    if not target_bucket_id: return
+    if not target_bucket_id: 
+        logger.error(f"Project {project_id} is missing a bucket with state 'ON_REVIEW'")
+        return
 
     task = find_task_by_branch(project_id, branch_name)
     if not task:
@@ -342,12 +349,13 @@ async def handle_pr_review_submitted(payload: dict):
     if not repo_url or not branch_name:
         return
 
-    project_data = find_project_buckets(repo_url)
+    project_data = find_project_bucket_by_state(repo_url, "ONGOING")
     if not project_data: return
-    project_id, bucket_map = project_data
+    project_id, target_bucket_id = project_data
     
-    target_bucket_id = bucket_map.get("ONGOING")
-    if not target_bucket_id: return
+    if not target_bucket_id: 
+        logger.error(f"Project {project_id} is missing a bucket with state 'ONGOING'")
+        return
 
     task = find_task_by_branch(project_id, branch_name)
     if not task:

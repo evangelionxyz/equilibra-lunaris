@@ -20,10 +20,6 @@ class DatabaseProject(BaseModel):
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    roles: Optional[list[str]] = Field(default_factory=list)
-    completed_bucket_id: Optional[int] = None
-    in_review_bucket_id: Optional[int] = None
-    todo_bucket_id: Optional[int] = None
 
 
 @db_router.post("/projects")
@@ -38,10 +34,6 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
             "name": project.name,
             "gh_repo_url": project.gh_repo_url,
             "description": project.description,
-            "roles": project.roles,
-            "completed_bucket_id": project.completed_bucket_id,
-            "in_review_bucket_id": project.in_review_bucket_id,
-            "todo_bucket_id": project.todo_bucket_id,
         }
 
         columns = []
@@ -124,7 +116,7 @@ def db_get_projects_for_current_user(current_user: dict = Depends(get_current_us
             return []
 
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE id = ANY(%s);",
+            "SELECT id, name, gh_repo_url, description, created_at, updated_at FROM public.projects WHERE id = ANY(%s);",
             (project_ids,)
         )
         projects = cur.fetchall()
@@ -142,7 +134,7 @@ def db_get_project_by_id(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE id = %s LIMIT 1;",
+            "SELECT id, name, gh_repo_url, description, created_at, updated_at FROM public.projects WHERE id = %s LIMIT 1;",
             (project_id,),
         )
         row = cur.fetchone()
@@ -174,7 +166,7 @@ def db_update_project(project_id: int, project_data: DatabaseProject):
         params = list(update_data.values())
         params.append(project_id)
         
-        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id;"
+        sql = f"UPDATE public.projects SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, name, gh_repo_url, description, created_at, updated_at;"
         
         cur.execute(sql, params)
         conn.commit()
@@ -209,5 +201,102 @@ def db_delete_project(project_id: int):
         if cur is not None:
             cur.close()
         _put_conn(conn)
+
+
+# ---------------------------------------------------------------------------
+# GET /projects/{project_id}/board  — Kanban Data Contract
+# Returns ONLY the fields the UI needs. No description, no branch_name.
+# ---------------------------------------------------------------------------
+@db_router.get("/projects/{project_id}/board")
+def db_get_project_board_data(project_id: int):
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute(
+            "SELECT id, name, state, order_idx, is_system_locked "
+            "FROM public.buckets WHERE project_id = %s "
+            "ORDER BY order_idx ASC;",
+            (project_id,)
+        )
+        buckets = cur.fetchall()
+
+        cur.execute(
+            "SELECT id, bucket_id, title, type, weight, "
+            "lead_assignee_id, suggested_assignee_id, last_activity_at, order_idx "
+            "FROM public.tasks WHERE project_id = %s "
+            "ORDER BY order_idx ASC;",
+            (project_id,)
+        )
+        tasks = cur.fetchall()
+
+        return {"buckets": buckets, "tasks": tasks}
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
+# ---------------------------------------------------------------------------
+# GET /projects/{project_id}/dashboard  — Command Center Data Contract
+# ---------------------------------------------------------------------------
+@db_router.get("/projects/{project_id}/dashboard")
+def db_get_project_dashboard_data(project_id: int):
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Members — join to get alias from users
+        cur.execute(
+            "SELECT pm.user_id, u.display_name AS alias, pm.role, pm.kpi_score, pm.current_load "
+            "FROM public.project_member pm "
+            "JOIN public.users u ON pm.user_id = u.id "
+            "WHERE pm.project_id = %s;",
+            (project_id,)
+        )
+        members = cur.fetchall()
+
+        # Activity — last 20 entries
+        cur.execute(
+            "SELECT id, user_name, action, target, created_at "
+            "FROM public.activities WHERE project_id = %s "
+            "ORDER BY created_at DESC LIMIT 20;",
+            (project_id,)
+        )
+        activities = cur.fetchall()
+
+        # Metrics — calculated from task distribution
+        cur.execute(
+            "SELECT "
+            "  COUNT(*) FILTER (WHERE b.state = 'COMPLETED') AS completed, "
+            "  COUNT(*) AS total "
+            "FROM public.tasks t "
+            "JOIN public.buckets b ON t.bucket_id = b.id "
+            "WHERE t.project_id = %s;",
+            (project_id,)
+        )
+        row = cur.fetchone()
+        completed = row["completed"] if row else 0
+        total = row["total"] if row else 1
+        progress = round((completed / max(total, 1)) * 100)
+
+        metrics = [
+            {
+                "label": "Task Completion",
+                "value": f"{completed}/{total}",
+                "progress": progress,
+                "status": "ON_TRACK" if progress >= 50 else "AT_RISK",
+                "target_label": "100% by deadline",
+            }
+        ]
+
+        return {"members": members, "metrics": metrics, "activity": activities}
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
 
 

@@ -4,6 +4,7 @@ import { Calendar, Clock, Target, FileText, ChevronRight, Download, CheckCircle2
 
 import type { Meeting } from '../../models';
 import { useTasks } from '../../controllers/useTasks';
+import { useBuckets } from '../../controllers/useBuckets';
 import { useToast } from '../../design-system/Toast';
 
 interface MeetingProps {
@@ -14,19 +15,28 @@ interface MeetingProps {
 export const MeetingAccordion: React.FC<MeetingProps> = ({ meeting, isDefaultExpanded = false }) => {
   const [isExpanded, setIsExpanded] = useState(isDefaultExpanded);
   const { createTask } = useTasks(meeting.project_id);
+  const { buckets } = useBuckets(meeting.project_id);
   const { showToast } = useToast();
   const [syncingTasks, setSyncingTasks] = useState<Record<number, boolean>>({});
   const [syncedTasks, setSyncedTasks] = useState<Record<number, boolean>>({});
 
   const handleSyncTask = async (index: number, taskTitle: string) => {
     setSyncingTasks(prev => ({ ...prev, [index]: true }));
+    
+    const targetBucketId = buckets?.[0]?.id;
+    if (!targetBucketId) {
+      showToast("Cannot sync task: Project has no column buckets.", "error");
+      setSyncingTasks(prev => ({ ...prev, [index]: false }));
+      return;
+    }
+
     try {
       await createTask({
         project_id: meeting.project_id,
+        bucket_id: targetBucketId,
         title: taskTitle,
         type: 'OTHER',
-        weight: 5,
-        status: 'DRAFT'
+        weight: 5
       });
       setSyncedTasks(prev => ({ ...prev, [index]: true }));
       showToast("Task created from history", "success");

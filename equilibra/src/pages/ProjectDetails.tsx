@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useBoard } from '../controllers/useBoard';
 import { useTasks } from '../controllers/useTasks';
 import { useMeetings } from '../controllers/useMeetings';
 import { useBuckets } from '../controllers/useBuckets';
@@ -50,9 +51,15 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
 
   const { role, loading: roleLoading } = useCurrentUserRole(projectId);
   const { members } = useProjectMembers(projectId);
-  const { buckets, loading: bucketsLoading, createBucket, reorderBuckets, deleteBucket } = useBuckets(projectId);
-  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask, reorderTasks } = useTasks(projectId);
+  // useBoard: single request for both buckets and tasks (strict data contract)
+  const { buckets, tasks, loading: boardLoading } = useBoard(projectId);
+  // Keep mutation hooks — they still POST/PUT/DELETE via the original endpoints
+  const { createBucket, reorderBuckets, deleteBucket } = useBuckets(projectId);
+  const { createTask, updateTask, deleteTask, reorderTasks } = useTasks(projectId);
   const { meetings, loading: meetingsLoading, createMeeting, deleteMeeting } = useMeetings(projectId);
+
+  const bucketsLoading = boardLoading;
+  const tasksLoading = boardLoading;
 
   const [newBucketName, setNewBucketName] = useState('');
   const [isCreatingBucket, setIsCreatingBucket] = useState(false);
