@@ -31,6 +31,7 @@ interface ProjectOverviewDevProps extends ProjectOverviewProps {
   tasks: Task[];
   buckets: Bucket[];
   onDropTask: (taskId: string | number, newBucketId: string | number, targetTaskId?: string | number) => Promise<void>;
+  onUpdateTask: (taskId: string | number, data: Partial<Task>) => Promise<void>;
 }
 
 export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId }) => {
@@ -256,7 +257,8 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
   projectId, 
   tasks,
   buckets,
-  onDropTask
+  onDropTask,
+  onUpdateTask
 }) => {
   const { user } = useAuth();
   const { activity: activities } = useDashboard(projectId);
@@ -265,18 +267,32 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
   const myUserId = user?.db_user?.id;
   
   // Find which tasks are in which buckets based on state
-  const getTasksByBucketState = (state: string) => {
+  const getTasksByBucketState = (state: string, assignedOnly = true) => {
     const bucketIds = buckets.filter(b => b.state === state).map(b => String(b.id));
-    return tasks.filter(t => bucketIds.includes(String(t.bucket_id)) && String(t.lead_assignee_id) === String(myUserId));
+    return tasks.filter(t => {
+      const isInBucket = bucketIds.includes(String(t.bucket_id));
+      if (!isInBucket) return false;
+      if (assignedOnly) return String(t.lead_assignee_id) === String(myUserId);
+      return !t.lead_assignee_id || String(t.lead_assignee_id) === String(myUserId);
+    });
   };
 
   const activeTask = getTasksByBucketState('ONGOING')[0];
   const myReviewTasks = getTasksByBucketState('ON_REVIEW');
-  const myQueueTasks = getTasksByBucketState('TODO').slice(0, 3);
+  
+  // Show TODO, PENDING, and DRAFT tasks in the queue (including unassigned)
+  const myQueueTasks = [
+    ...getTasksByBucketState('TODO', false),
+    ...getTasksByBucketState('PENDING', false),
+    ...getTasksByBucketState('DRAFT', false)
+  ].filter(t => !activeTask || t.id !== activeTask.id).slice(0, 5);
 
   const handleStartWork = async (taskId: string | number) => {
     const ongoingBucket = buckets.find(b => b.state === 'ONGOING');
     if (!ongoingBucket) return;
+    
+    // Auto-assign to me if not already assigned
+    await onUpdateTask(taskId, { lead_assignee_id: myUserId });
     await onDropTask(taskId, ongoingBucket.id!);
   };
 
