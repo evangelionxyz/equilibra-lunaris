@@ -59,7 +59,9 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
               <div className="relative">
                 <Icon size={20} strokeWidth={2.5} />
                 {hasUnread && (
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#151A22]" />
+                  <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-[#151A22] flex items-center justify-center text-[10px] font-bold text-white px-1">
+                    {alerts.length > 99 ? '99+' : alerts.length}
+                  </div>
                 )}
               </div>
               {isActive && (
