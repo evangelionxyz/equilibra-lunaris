@@ -36,7 +36,7 @@ export async function fetchCurrentUser(): Promise<GitHubUser | null> {
 }
 
 export async function postLogout(): Promise<void> {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
 }
 
 export async function postSyncUser(): Promise<DatabaseUser | null> {
@@ -50,4 +50,15 @@ export async function postSyncUser(): Promise<DatabaseUser | null> {
     } catch {
         throw new Error('Failed to parse /auth/sync-user response')
     }
+}
+
+export async function updateTelegramChatId(userId: number, chatId: string): Promise<DatabaseUser> {
+    const resp = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegram_chat_id: chatId }),
+        credentials: 'include'
+    })
+    if (!resp.ok) throw new Error(`Failed to update chat id: ${resp.status}`)
+    return await resp.json()
 }

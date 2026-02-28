@@ -5,34 +5,11 @@ import httpx
 # misal: from app.config import settings
 from config import settings 
 
+from services.telegram_service import send_telegram_message
+
 router = APIRouter(prefix="/telegram", tags=["Telegram Notification"])
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.telegram_bot_token}"
-
-async def send_telegram_message(chat_id: int, text: str):
-    """Fungsi helper untuk mengirim pesan balik ke user via Telegram"""
-    if not settings.telegram_bot_token:
-        print("Telegram Bot Token belum di-set di .env")
-        return
-
-    url = f"{TELEGRAM_API_URL}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown"
-    }
-    
-    print(f"\n[DEBUG] Mencoba mengirim pesan ke Chat ID: {chat_id}")
-    print(f"[DEBUG] Token yang terbaca: '{settings.telegram_bot_token}'")
-    
-    try:
-        # Kita perbesar timeout menjadi 30 detik agar tidak mudah putus
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(url, json=payload)
-            print(f"[DEBUG] Status Pengiriman: {response.status_code}")
-            print(f"[DEBUG] Respons Telegram: {response.text}\n")
-    except Exception as e:
-        print(f"\n[ERROR] Gagal mengirim pesan ke Telegram: {e}\n")
         
         
 # ==========================================

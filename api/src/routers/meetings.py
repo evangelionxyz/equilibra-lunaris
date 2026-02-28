@@ -17,42 +17,33 @@ from routers.auth import get_current_user
 from services.database.database import _get_conn, _put_conn
 from services.database.id_generator import _generator
 
+from services.database.alerts import DatabaseAlert, db_create_alert
+
 router = APIRouter(tags=["Meetings"])
 
-# ==========================================
-# ALERT HELPER
-# ==========================================
-def _create_draft_approval_alert(user_uuid: str, project_id: int, meeting_title: str) -> int:
+async def _create_draft_approval_alert(user_uuid: str, project_id: int, meeting_title: str) -> int:
     """Create a DRAFT_APPROVAL alert in the DB and return its new ID."""
-    conn = _get_conn()
-    cur = None
     try:
-        cur = conn.cursor()
-        
-        # user_id in the alerts table is VARCHAR — pass the GitHub id string directly.
-        alert_id = _generator.generate()
         title = f"Review Extracted Tasks: {meeting_title}"
         desc = "The AI has finished extracting tasks from the meeting. Please review and confirm which ones should be added to the backlog."
         
-        sql = """
-            INSERT INTO public.alerts 
-                (id, user_id, context_id, project_id, title, description, type, severity, is_resolved, suggested_actions) 
-            VALUES 
-                (%s, %s, %s, %s, %s, %s, 'DRAFT_APPROVAL', 'info', FALSE, ARRAY[]::TEXT[]) 
-            RETURNING id;
-        """
-        cur.execute(sql, (alert_id, str(user_uuid), project_id, project_id, title, desc))
-        conn.commit()
-        return alert_id
+        alert_data = DatabaseAlert(
+            user_id=int(user_uuid) if user_uuid.isdigit() else None, # Assuming user_uuid is GH ID string
+            project_id=project_id,
+            title=title,
+            description=desc,
+            type="DRAFT_APPROVAL",
+            severity="info"
+        )
+        
+        # Override user_id logic if needed, but db_create_alert handles coercion to string
+        alert_data.user_id = user_uuid 
+        
+        row = await db_create_alert(alert_data)
+        return row["id"] if row else -1
     except Exception as e:
-        conn.rollback()
         print(f"Failed to create alert: {e}")
-        # Return a fallback integer to avoid breaking the frontend totally
         return -1
-    finally:
-        if cur is not None:
-            cur.close()
-        _put_conn(conn)
 
 TEMP_ANALYSIS_RESULTS = {}  # Temporary in-memory storage for results
 
@@ -321,7 +312,7 @@ async def analyze_meeting_endpoint(
             meeting_id = "not-saved"
 
         # 2. Generasikan Alert ONLY after attempting to save
-        alert_id = _create_draft_approval_alert(
+        alert_id = await _create_draft_approval_alert(
             user_uuid=str(current_user.get("id")), 
             project_id=project_id, 
             meeting_title=title
@@ -440,7 +431,7 @@ async def process_video_in_background(bot_id: str, user_uuid: str, project_id: i
         
         # Generasikan Alert
         meeting_title = analysis_result.get("mom", {}).get("judul_meeting", "Meeting Tanpa Judul")
-        alert_id = _create_draft_approval_alert(
+        alert_id = await _create_draft_approval_alert(
             user_uuid=user_uuid, 
             project_id=project_id, 
             meeting_title=meeting_title

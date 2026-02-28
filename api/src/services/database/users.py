@@ -177,10 +177,16 @@ def get_or_create_user(github_id: Optional[int] = None, email: Optional[str] = N
         if cur is not None:
             cur.close()
         _put_conn(conn)
-
+class UserUpdate(BaseModel):
+    display_name: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    gh_username: Optional[str] = None
+    gh_access_token: Optional[str] = None
+    gh_id: Optional[str] = None
+    email: Optional[str] = None
 
 @db_router.put("/users/{user_id}")
-def db_update_user(user_id: int, user_data: DatabaseUser):
+def db_update_user(user_id: int, user_data: UserUpdate):
     conn = _get_conn()
     cur = None
     try:
