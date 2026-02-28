@@ -1,5 +1,6 @@
 import { apiFetch } from "./apiClient";
 import type { Bucket } from "../models";
+import JSONBig from "json-bigint";
 
 export const bucketService = {
     getBuckets: async (projectId: string | number): Promise<Bucket[]> => {
@@ -13,14 +14,14 @@ export const bucketService = {
     createBucket: async (data: Partial<Bucket>): Promise<Bucket> => {
         return await apiFetch<Bucket>("/buckets", {
             method: "POST",
-            body: JSON.stringify(data),
+            body: JSONBig.stringify(data),
         });
     },
 
     reorderBuckets: async (projectId: string | number, bucketIds: (number | string)[]): Promise<{ status: string; order: (number | string)[] }> => {
         return await apiFetch<{ status: string; order: (number | string)[] }>(`/projects/${projectId}/buckets/reorder`, {
             method: "PUT",
-            body: JSON.stringify(bucketIds),
+            body: JSONBig.stringify(bucketIds),
         });
     },
 
