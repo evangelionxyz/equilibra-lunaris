@@ -1,5 +1,6 @@
 import { apiFetch } from "./apiClient";
 import type { User, ProjectMember } from "../models";
+import { projectMemberService } from "./projectMemberService";
 
 export const userService = {
   getUsers: async (): Promise<User[]> => {
@@ -15,22 +16,7 @@ export const userService = {
   getProjectMembers: async (
     projectId: string | number,
   ): Promise<ProjectMember[]> => {
-    const project = await apiFetch<{ members: number[] }>(
-      `/projects/${projectId}`,
-    );
-    const memberIds = project.members || [];
-    const allUsers = await userService.getUsers();
-
-    return allUsers
-      .filter((u) => u.id !== undefined && memberIds.includes(u.id))
-      .map((u) => ({
-        user_id: u.id!,
-        project_id: projectId,
-        role: "PROGRAMMER",
-        kpi_score: 85,
-        max_capacity: 100,
-        current_load: 40,
-      }));
+    return await projectMemberService.getMembers(projectId);
   },
 
   getMembershipsForUser: async (): Promise<ProjectMember[]> => {

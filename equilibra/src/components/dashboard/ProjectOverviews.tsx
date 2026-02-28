@@ -34,7 +34,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
   const activities = activity; // Alias for consistency in the template
 
   const criticalInsights = alerts.filter(a => a.severity === 'critical').slice(0, 3);
-  const tasksAtRisk = tasks.filter(t => t.warnStagnant || t.status === 'ON REVIEW').slice(0, 3);
+  const tasksAtRisk = tasks.filter(t => t.warnStagnant || t.status === 'ON_REVIEW').slice(0, 3);
 
   const getTimeAgo = (dateStr: string) => {
     // eslint-disable-next-line react-hooks/purity
@@ -253,7 +253,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
 
   const myUserId = user?.db_user?.id || 1;
   const activeTask = tasks.find(t => t.status === 'ONGOING' && t.lead_assignee_id === myUserId);
-  const myReviewTasks = tasks.filter(t => t.status === 'ON REVIEW' && t.lead_assignee_id === myUserId);
+  const myReviewTasks = tasks.filter(t => t.status === 'ON_REVIEW' && t.lead_assignee_id === myUserId);
   const myQueueTasks = tasks.filter(t => t.status === 'TODO' && t.lead_assignee_id === myUserId).slice(0, 3);
 
   const getTimeAgo = (dateStr: string) => {

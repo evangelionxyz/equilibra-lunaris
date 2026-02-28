@@ -1,12 +1,13 @@
 export type MeetingSource = "RECALL_BOT" | "MANUAL_UPLOAD" | "MANUAL";
 export type MeetingStatus = "SCHEDULED" | "PROCESSING" | "COMPLETED" | "FAILED";
-export type TaskStatus =
+export type BucketState =
   | "DRAFT"
   | "PENDING"
   | "TODO"
   | "ONGOING"
-  | "ON REVIEW"
+  | "ON_REVIEW"
   | "COMPLETED";
+
 export type TaskType = "CODE" | "REQUIREMENT" | "DESIGN" | "OTHER" | "NON-CODE";
 export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
 
@@ -14,7 +15,7 @@ export interface Bucket {
   id?: number | string;
   project_id: number | string;
   name: string;
-  state: string;
+  state: BucketState;
   is_system_locked?: boolean;
   order_idx: number;
   created_at?: string;
@@ -117,7 +118,7 @@ export interface Task {
   suggested_assignee_id?: number | string;
   title: string;
   description?: string; // LAZY LOAD TIER
-  status?: TaskStatus; // Derived from bucket for UI
+  status?: BucketState; // Derived from bucket for UI
   type: TaskType;
   weight: number; // VISIBLE TIER
   branch_name?: string;

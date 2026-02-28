@@ -1,30 +1,39 @@
 import { useState, useEffect } from "react";
 // Role was removed from models
-import { userService } from "../services/userService";
+import { projectMemberService } from "../services/projectMemberService";
 
-export const useCurrentUserRole = (projectId: string | number | null) => {
+export const useCurrentUserRole = (
+  projectId: string | number | null,
+  userId: number | string | undefined,
+) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!projectId) {
-      const t = setTimeout(() => setRole(null), 0);
-      return () => clearTimeout(t);
+    if (!projectId || !userId) {
+      setRole(null);
+      return;
     }
 
     const fetchRole = async () => {
       setLoading(true);
-      // Hardcoding user_id = 1 (Budi) as the "current user" for the mock
-      // In a real app, you'd fetch the specific membership.
-      // For now, we'll fetch all members and find the one for user 1.
-      const members = await userService.getProjectMembers(projectId);
-      const member = members.find((m) => m.user_id === 1);
-      setRole(member?.role || null);
-      setLoading(false);
+      try {
+        const members = await projectMemberService.getMembers(projectId);
+        const member = members.find(
+          (m: any) => String(m.user_id) === String(userId),
+        );
+        setRole(member?.role || null);
+        console.log("Member role:", member?.role);
+      } catch (err) {
+        console.error("Failed to fetch role:", err);
+        setRole(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchRole();
-  }, [projectId]);
+  }, [projectId, userId]);
 
   return { role, loading };
 };

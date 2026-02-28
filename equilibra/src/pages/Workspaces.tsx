@@ -14,13 +14,16 @@ export const WorkspacesPage: React.FC = () => {
   const navigate = useNavigate();
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editTarget, setEditTarget] = useState<Partial<Project>>({});
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | string | null>(null);
 
   const handleCreate = async (data: Pick<Project, 'name' | 'gh_repo_url'> & Partial<Project>) => {
     await createProject(data);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
+    if (!window.confirm("Are you sure you want to delete this project? All associated tasks, buckets, and data will be permanently removed.")) {
+      return;
+    }
     setDeletingId(id);
     await deleteProject(id);
     setDeletingId(null);
@@ -74,9 +77,9 @@ export const WorkspacesPage: React.FC = () => {
                 onClick={() => navigate(`/projects/${p.id}`)}
               />
               <button
-                onClick={() => handleDelete(p.id!)}
-                disabled={deletingId === p.id}
-                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
+                onClick={(e) => { e.stopPropagation(); handleDelete(p.id!); }}
+                disabled={String(deletingId) === String(p.id)}
+                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-[#1F2937] text-slate-500 hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all z-10"
               >
                 <Trash2 size={12} />
               </button>

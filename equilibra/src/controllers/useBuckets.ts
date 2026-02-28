@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Bucket } from "../models";
+import type { Bucket, BucketState } from "../models";
 import { bucketService } from "../services/bucketService";
 
 export const useBuckets = (projectId: string | number) => {
@@ -31,9 +31,8 @@ export const useBuckets = (projectId: string | number) => {
   }, [fetchBuckets]);
 
   const createBucket = useCallback(
-    async (label: string) => {
+    async (label: string, state: BucketState) => {
       try {
-        const state = label.trim().toUpperCase().replace(/\s+/g, "_");
         const newBucket = await bucketService.createBucket({
           project_id: projectId,
           name: label.trim(),

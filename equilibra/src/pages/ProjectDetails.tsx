@@ -16,23 +16,24 @@ import { ConfirmModal } from '../components/modals/ConfirmModal';
 import { SurfaceCard } from '../design-system/SurfaceCard';
 import { TaskFormModal } from '../components/modals/TaskFormModal';
 import { MeetingFormModal } from '../components/modals/MeetingFormModal';
+import { useAuth } from '../auth/useAuth';
 import { useCurrentUserRole } from '../controllers/useCurrentUserRole';
 import { useProjectMembers } from '../controllers/useProjectMembers';
 import { projectService } from '../services/projectService';
 import { useNavigate } from 'react-router-dom';
 
-import type { TaskType, Project, Task } from '../models';
+import type { TaskType, Project, Task, BucketState } from '../models';
 
 interface ProjectDetailsProps {
   projectId: string | number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_COLORS: Record<BucketState, string> = {
   'DRAFT': 'bg-slate-500',
   'PENDING': 'bg-[#F59E0B]',
   'TODO': 'bg-[#3B82F6]',
   'ONGOING': 'bg-[#16A34A]',
-  'ON REVIEW': 'bg-[#8B5CF6]',
+  'ON_REVIEW': 'bg-[#8B5CF6]',
   'COMPLETED': 'bg-slate-400',
 };
 
@@ -50,7 +51,12 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     projectService.getProjectById(projectId).then(p => setProject(p || null));
   }, [projectId]);
 
-  const { role, loading: roleLoading } = useCurrentUserRole(projectId);
+  const { user } = useAuth();
+  const dbUserId = user?.db_user?.id;
+
+  const { role, loading: roleLoading } = useCurrentUserRole(projectId, dbUserId);
+  
+  const isManager = role?.toUpperCase() === 'MANAGER' || role?.toUpperCase() === 'OWNER';
   const { members } = useProjectMembers(projectId);
   // useBoard: single request for both buckets and tasks (strict data contract)
   const { buckets, tasks, loading: boardLoading, refreshBoard } = useBoard(projectId);
@@ -64,6 +70,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const tasksLoading = boardLoading;
 
   const [newBucketName, setNewBucketName] = useState('');
+  const [newBucketState, setNewBucketState] = useState<BucketState>('TODO');
   const [isCreatingBucket, setIsCreatingBucket] = useState(false);
 
   const handleCreateTask = async (data: { project_id: number | string; title: string; type: TaskType; weight: number; bucket_id?: number | string }) => {
@@ -111,8 +118,9 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const handleCreateBucket = async () => {
     if (!newBucketName.trim()) return;
     try {
-      await createBucket(newBucketName.trim());
+      await createBucket(newBucketName.trim(), newBucketState);
       setNewBucketName('');
+      setNewBucketState('TODO');
       setIsCreatingBucket(false);
       await Promise.all([refreshBoard(true), refreshDashboard(true)]);
     } catch (e) {
@@ -143,8 +151,20 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     await reorderBuckets(newBuckets.map(b => b.id!));
     await Promise.all([refreshBoard(true), refreshDashboard(true)]);
   };
+ 
+  const tabs = isManager 
+    ? ['Overview', 'Tasks', 'MoM & Meetings', 'Settings'] 
+    : ['Overview', 'Tasks', 'MoM & Meetings'];
 
-  const tabs = ['Overview', 'Tasks', 'MoM & Meetings', 'Settings'];
+  const isLoading = roleLoading || boardLoading || meetingsLoading;
+ 
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-slate-500 text-[14px] min-h-[400px]">
+        Syncing permissions & data...
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-500 flex flex-col h-full max-w-[1600px] mx-auto w-full">
@@ -186,7 +206,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         {/* Overview */}
         {activeTab === 'Overview' && (
           roleLoading ? <div className="text-slate-500 py-10 text-center">Resolving permissions...</div> :
-            role === 'Owner' ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
+            isManager ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
         )}
 
         {/* Tasks — Kanban */}
@@ -266,6 +286,21 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                         placeholder="Column Name"
                         className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:border-[#3B82F6] focus:outline-none"
                       />
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider ml-1">Behavior State</label>
+                        <select
+                          value={newBucketState}
+                          onChange={(e) => setNewBucketState(e.target.value as BucketState)}
+                          className="w-full bg-[#0B0E14] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:border-[#3B82F6] focus:outline-none appearance-none"
+                        >
+                          <option value="DRAFT">DRAFT (AI Suggestions)</option>
+                          <option value="PENDING">PENDING (Approval Needed)</option>
+                          <option value="TODO">TODO (Task Queue)</option>
+                          <option value="ONGOING">ONGOING (Active Work)</option>
+                          <option value="ON_REVIEW">ON_REVIEW (Testing/QA)</option>
+                          <option value="COMPLETED">COMPLETED (Finished)</option>
+                        </select>
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleCreateBucket}
@@ -275,7 +310,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                           Save
                         </button>
                         <button
-                          onClick={() => { setIsCreatingBucket(false); setNewBucketName(''); }}
+                          onClick={() => { setIsCreatingBucket(false); setNewBucketName(''); setNewBucketState('TODO'); }}
                           className="flex-1 bg-[#1F2937] text-white text-[12px] font-bold py-1.5 rounded-lg hover:bg-[#374151] transition-colors"
                         >
                           Cancel
