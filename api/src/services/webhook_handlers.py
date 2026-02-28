@@ -1,6 +1,7 @@
 import logging
-from services.database.projects import db_get_project_by_id, db_update_project
 from services.database.tasks import DatabaseTask, db_update_task
+from services.database.activities import DatabaseActivity, db_create_activity
+from fastapi import BackgroundTasks
 from services.database.database import _get_conn, _put_conn
 import psycopg2.extras
 import re
@@ -222,17 +223,22 @@ async def process_review_kpi(payload: dict, pool=None):
 
 
 
-def find_project_by_repo_url(repo_url: str):
+def find_project_buckets(repo_url: str):
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        # gh_repo_url is character varying[]
         cur.execute(
-            "SELECT id, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE %s = ANY(gh_repo_url) LIMIT 1;",
+            "SELECT id FROM public.projects WHERE %s = ANY(gh_repo_url) LIMIT 1;",
             (repo_url,)
         )
-        return cur.fetchone()
+        project_row = cur.fetchone()
+        if not project_row: return None
+        
+        cur.execute("SELECT id, state FROM public.buckets WHERE project_id = %s AND is_deleted = False;", (project_row["id"],))
+        buckets = cur.fetchall()
+        bucket_map = {b["state"]: b["id"] for b in buckets}
+        return project_row["id"], bucket_map
     finally:
         if cur is not None:
             cur.close()
@@ -244,7 +250,7 @@ def find_task_by_branch(project_id: int, branch_name: str):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id FROM public.tasks WHERE project_id = %s AND branch_name = %s LIMIT 1;",
+            "SELECT id, title, type, weight FROM public.tasks WHERE project_id = %s AND branch_name = %s LIMIT 1;",
             (project_id, branch_name)
         )
         return cur.fetchone()
@@ -255,30 +261,37 @@ def find_task_by_branch(project_id: int, branch_name: str):
 
 async def handle_pr_closed(payload: dict):
     pr = payload.get("pull_request", {})
-    if not pr.get("merged"):
-        logger.info(f"PR #{pr.get('number')} closed without merge. Skipping task movement.")
-        return
-
     repo_url = payload.get("repository", {}).get("html_url")
     branch_name = pr.get("head", {}).get("ref")
+    gh_username = pr.get("user", {}).get("login", "Unknown")
 
     if not repo_url or not branch_name:
-        logger.warning("Missing repo_url or branch_name in PR payload.")
         return
 
-    project = find_project_by_repo_url(repo_url)
-    if not project or not project.get("completed_bucket_id"):
-        logger.info(f"No project found for repo {repo_url} or completed_bucket_id not set.")
-        return
+    project_data = find_project_buckets(repo_url)
+    if not project_data: return
+    project_id, bucket_map = project_data
 
-    task = find_task_by_branch(project["id"], branch_name)
-    if not task:
-        logger.info(f"No task found for branch {branch_name} in project {project['id']}.")
+    task = find_task_by_branch(project_id, branch_name)
+    if not task: return
+
+    is_merged = pr.get("merged", False)
+    target_bucket_id = bucket_map.get("COMPLETED") if is_merged else bucket_map.get("ONGOING")
+    
+    if not target_bucket_id:
         return
 
     try:
-        db_update_task(task["id"], DatabaseTask(bucket_id=project["completed_bucket_id"], title="")) 
-        logger.info(f"Moved task {task['id']} to completed bucket {project['completed_bucket_id']}.")
+        db_update_task(task["id"], DatabaseTask(bucket_id=target_bucket_id, title=task.get("title", ""), type=task.get("type", "CODE"), weight=task.get("weight", 0)), BackgroundTasks()) 
+        logger.info(f"Moved task {task['id']} to bucket {target_bucket_id}.")
+        
+        action_msg = "merged" if is_merged else "closed without merging"
+        db_create_activity(DatabaseActivity(
+            project_id=project_id,
+            user_name=gh_username,
+            action=action_msg,
+            target=f"PR for {branch_name}"
+        ))
     except Exception as e:
         logger.error(f"Failed to move task {task['id']}: {e}")
 
@@ -286,21 +299,31 @@ async def handle_pr_opened(payload: dict):
     pr = payload.get("pull_request", {})
     repo_url = payload.get("repository", {}).get("html_url")
     branch_name = pr.get("head", {}).get("ref")
+    gh_username = pr.get("user", {}).get("login", "Unknown")
 
     if not repo_url or not branch_name:
         return
 
-    project = find_project_by_repo_url(repo_url)
-    if not project or not project.get("in_review_bucket_id"):
-        return
+    project_data = find_project_buckets(repo_url)
+    if not project_data: return
+    project_id, bucket_map = project_data
+    
+    target_bucket_id = bucket_map.get("ON_REVIEW")
+    if not target_bucket_id: return
 
-    task = find_task_by_branch(project["id"], branch_name)
+    task = find_task_by_branch(project_id, branch_name)
     if not task:
         return
 
     try:
-        db_update_task(task["id"], DatabaseTask(bucket_id=project["in_review_bucket_id"], title=""))
-        logger.info(f"Moved task {task['id']} to in-review bucket {project['in_review_bucket_id']}.")
+        db_update_task(task["id"], DatabaseTask(bucket_id=target_bucket_id, title=task.get("title", ""), type=task.get("type", "CODE"), weight=task.get("weight", 0)), BackgroundTasks())
+        logger.info(f"Moved task {task['id']} to bucket {target_bucket_id}.")
+        db_create_activity(DatabaseActivity(
+            project_id=project_id,
+            user_name=gh_username,
+            action="opened",
+            target=f"PR for {branch_name}"
+        ))
     except Exception as e:
         logger.error(f"Failed to move task {task['id']}: {e}")
 
@@ -308,27 +331,36 @@ async def handle_pr_review_submitted(payload: dict):
     review = payload.get("review", {})
     state = review.get("state")
     
-    # Move back to Todo if changes requested or just commented
-    if state not in ["changes_requested", "commented"]:
+    if state != "changes_requested":
         return
 
     pr = payload.get("pull_request", {})
     repo_url = payload.get("repository", {}).get("html_url")
     branch_name = pr.get("head", {}).get("ref")
+    gh_username = review.get("user", {}).get("login", "Unknown")
 
     if not repo_url or not branch_name:
         return
 
-    project = find_project_by_repo_url(repo_url)
-    if not project or not project.get("todo_bucket_id"):
-        return
+    project_data = find_project_buckets(repo_url)
+    if not project_data: return
+    project_id, bucket_map = project_data
+    
+    target_bucket_id = bucket_map.get("ONGOING")
+    if not target_bucket_id: return
 
-    task = find_task_by_branch(project["id"], branch_name)
+    task = find_task_by_branch(project_id, branch_name)
     if not task:
         return
 
     try:
-        db_update_task(task["id"], DatabaseTask(bucket_id=project["todo_bucket_id"], title=""))
-        logger.info(f"Moved task {task['id']} to todo bucket {project['todo_bucket_id']}.")
+        db_update_task(task["id"], DatabaseTask(bucket_id=target_bucket_id, title=task.get("title", ""), type=task.get("type", "CODE"), weight=task.get("weight", 0)), BackgroundTasks())
+        logger.info(f"Moved task {task['id']} to bucket {target_bucket_id}.")
+        db_create_activity(DatabaseActivity(
+            project_id=project_id,
+            user_name=gh_username,
+            action="requested changes on",
+            target=f"PR for {branch_name}"
+        ))
     except Exception as e:
         logger.error(f"Failed to move task {task['id']}: {e}")

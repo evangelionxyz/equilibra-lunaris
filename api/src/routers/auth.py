@@ -152,6 +152,17 @@ async def auth_callback(code: str, state: str):
         )
 
     user = user_resp.json() if user_resp.status_code == 200 else {}
+    
+    if user:
+        await run_in_threadpool(
+            get_or_create_user,
+            int(user.get("id", 0) or 0),
+            user.get("email"),
+            user.get("login"),
+            user.get("name"),
+            None,
+            access_token
+        )
 
     response = RedirectResponse(url="/", status_code=302)
     response.set_cookie(

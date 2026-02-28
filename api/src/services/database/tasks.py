@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks
 import psycopg2
 import psycopg2.extras
 
@@ -129,7 +129,7 @@ def db_get_task_by_id(task_id: int):
 
 
 @db_router.put("/tasks/{task_id}")
-def db_update_task(task_id: int, task_data: DatabaseTask):
+def db_update_task(task_id: int, task_data: DatabaseTask, background_tasks: BackgroundTasks):
     conn = _get_conn()
     cur = None
     try:
@@ -148,6 +148,13 @@ def db_update_task(task_id: int, task_data: DatabaseTask):
         cur.execute(sql, params)
         conn.commit()
         row = cur.fetchone()
+        
+        if update_data.get("bucket_id") is None: 
+            pass # No bucket change, no sync needed
+        else:
+            from services.github_sync import sync_task_to_github_branch
+            background_tasks.add_task(sync_task_to_github_branch, task_id, update_data["bucket_id"])
+            
         if row is None:
             raise HTTPException(status_code=404, detail="Task not found")
         return row
@@ -183,7 +190,7 @@ def db_delete_task(task_id: int):
 
 
 @db_router.put("/projects/{project_id}/buckets/{bucket_id}/tasks/reorder")
-def db_reorder_tasks(project_id: int, bucket_id: int, task_ids: list[int]):
+def db_reorder_tasks(project_id: int, bucket_id: int, task_ids: list[int], background_tasks: BackgroundTasks):
     """Batch reorder tasks inside a specific bucket."""
     conn = _get_conn()
     cur = None
@@ -219,6 +226,11 @@ def db_reorder_tasks(project_id: int, bucket_id: int, task_ids: list[int]):
             )
 
         conn.commit()
+        
+        from services.github_sync import sync_task_to_github_branch
+        for t_id in task_ids:
+            background_tasks.add_task(sync_task_to_github_branch, t_id, bucket_id)
+            
         return {"status": "success", "order": task_ids, "bucket_id": bucket_id}
     except Exception as e:
         conn.rollback()

@@ -111,6 +111,10 @@ def get_or_create_user(github_id: Optional[int] = None, email: Optional[str] = N
             )
             row = cur.fetchone()
             if row:
+                if gh_access_token and row.get("gh_access_token") != gh_access_token:
+                    cur.execute("UPDATE public.users SET gh_access_token = %s WHERE id = %s;", (gh_access_token, row["id"]))
+                    conn.commit()
+                    row["gh_access_token"] = gh_access_token
                 return row
 
         # Check by username (ignore empty string)
@@ -121,6 +125,10 @@ def get_or_create_user(github_id: Optional[int] = None, email: Optional[str] = N
             )
             row = cur.fetchone()
             if row:
+                if gh_access_token and row.get("gh_access_token") != gh_access_token:
+                    cur.execute("UPDATE public.users SET gh_access_token = %s WHERE id = %s;", (gh_access_token, row["id"]))
+                    conn.commit()
+                    row["gh_access_token"] = gh_access_token
                 return row
 
         # Check by email (ignore empty string)
@@ -131,6 +139,10 @@ def get_or_create_user(github_id: Optional[int] = None, email: Optional[str] = N
             )
             row = cur.fetchone()
             if row:
+                if gh_access_token and row.get("gh_access_token") != gh_access_token:
+                    cur.execute("UPDATE public.users SET gh_access_token = %s WHERE id = %s;", (gh_access_token, row["id"]))
+                    conn.commit()
+                    row["gh_access_token"] = gh_access_token
                 return row
 
         # Not found: insert using provided values
