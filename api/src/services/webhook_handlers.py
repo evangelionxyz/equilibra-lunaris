@@ -13,7 +13,7 @@ def find_project_by_repo_url(repo_url: str):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         # gh_repo_url is character varying[]
         cur.execute(
-            "SELECT id, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE %s = ANY(gh_repo_url) AND is_deleted = False LIMIT 1;",
+            "SELECT id, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects WHERE %s = ANY(gh_repo_url) LIMIT 1;",
             (repo_url,)
         )
         return cur.fetchone()
@@ -28,7 +28,7 @@ def find_task_by_branch(project_id: int, branch_name: str):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id FROM public.tasks WHERE project_id = %s AND branch_name = %s AND is_deleted = False LIMIT 1;",
+            "SELECT id FROM public.tasks WHERE project_id = %s AND branch_name = %s LIMIT 1;",
             (project_id, branch_name)
         )
         return cur.fetchone()

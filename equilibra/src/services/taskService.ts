@@ -5,12 +5,12 @@ import JSONBig from 'json-bigint';
 export const taskService = {
   getTasksByProject: async (projectId: string | number): Promise<Task[]> => {
     const tasks = await apiFetch<Task[]>("/tasks");
-    return tasks.filter((t) => String(t.project_id) === String(projectId) && !t.is_deleted);
+    return tasks.filter((t) => String(t.project_id) === String(projectId));
   },
 
   getMyTasks: async (userId: number): Promise<Task[]> => {
     const tasks = await apiFetch<Task[]>("/tasks");
-    return tasks.filter((t) => String(t.lead_assignee_id) === String(userId) && !t.is_deleted);
+    return tasks.filter((t) => String(t.lead_assignee_id) === String(userId));
   },
 
   createTask: async (data: Task): Promise<Task> => {

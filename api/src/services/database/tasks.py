@@ -24,7 +24,6 @@ class DatabaseTask(BaseModel):
     weight: int  # Points (1-8)
     branch_name: Optional[str] = None
     last_activity_at: Optional[datetime] = None
-    is_deleted: bool = False
     order_idx: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -44,7 +43,6 @@ def db_create_task(task: DatabaseTask):
             row = cur.fetchone()
             assigned_order_idx = row['next_idx'] if row else 0
 
-        # fetch to the last idx
         mapping = {
             "id": _generator.generate(),    
             "project_id": task.project_id,
@@ -59,7 +57,6 @@ def db_create_task(task: DatabaseTask):
             "weight": task.weight,
             "branch_name": task.branch_name,
             "last_activity_at": task.last_activity_at,
-            "is_deleted": task.is_deleted,
             "order_idx": assigned_order_idx,
         }
 
@@ -77,7 +74,7 @@ def db_create_task(task: DatabaseTask):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, order_idx, created_at, updated_at;"
+        sql = f"INSERT INTO public.tasks ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, order_idx, created_at, updated_at;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -102,7 +99,7 @@ def db_get_tasks():
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT * FROM public.tasks WHERE is_deleted IS NOT TRUE;")
+        cur.execute("SELECT id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, order_idx, created_at, updated_at FROM public.tasks;")
         rows = cur.fetchall()
         return rows
     finally:
@@ -118,7 +115,7 @@ def db_get_task_by_id(task_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, order_idx, created_at, updated_at FROM public.tasks WHERE id = %s LIMIT 1;",
+            "SELECT id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, order_idx, created_at, updated_at FROM public.tasks WHERE id = %s LIMIT 1;",
             (task_id,),
         )
         row = cur.fetchone()
@@ -146,7 +143,7 @@ def db_update_task(task_id: int, task_data: DatabaseTask):
         params = list(update_data.values())
         params.append(task_id)
         
-        sql = f"UPDATE public.tasks SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, is_deleted, order_idx, created_at, updated_at;"
+        sql = f"UPDATE public.tasks SET {set_clause}, updated_at = NOW() WHERE id = %s RETURNING id, project_id, bucket_id, meeting_id, parent_task_id, lead_assignee_id, suggested_assignee_id, title, description, type, weight, branch_name, last_activity_at, order_idx, created_at, updated_at;"
         
         cur.execute(sql, params)
         conn.commit()
@@ -162,18 +159,23 @@ def db_update_task(task_id: int, task_data: DatabaseTask):
 
 @db_router.delete("/tasks/{task_id}")
 def db_delete_task(task_id: int):
-    """Soft delete a task."""
+    """Hard delete a task."""
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        sql = "UPDATE public.tasks SET is_deleted = True, updated_at = NOW() WHERE id = %s RETURNING id;"
-        cur.execute(sql, (task_id,))
+        cur.execute("DELETE FROM public.tasks WHERE id = %s RETURNING id;", (task_id,))
         conn.commit()
         row = cur.fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Task not found")
         return {"id": task_id, "status": "deleted"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if cur is not None:
             cur.close()
@@ -225,5 +227,3 @@ def db_reorder_tasks(project_id: int, bucket_id: int, task_ids: list[int]):
         if cur is not None:
             cur.close()
         _put_conn(conn)
-
-

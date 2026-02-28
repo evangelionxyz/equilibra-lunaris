@@ -15,7 +15,6 @@ export interface Bucket {
   project_id: number | string;
   state: string;
   order_idx: number;
-  is_deleted?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -47,7 +46,6 @@ export interface Project {
   tags?: string[];
   isLead?: boolean;
   tasksPending?: number;
-  is_deleted?: boolean;
   roles?: string[];
   completed_bucket_id?: number | string;
   in_review_bucket_id?: number | string;
@@ -129,7 +127,6 @@ export interface Task {
   warnStagnant?: boolean;
   isSuggested?: boolean;
   prUrl?: string;
-  is_deleted?: boolean;
 }
 
 export interface TaskAssignee {
