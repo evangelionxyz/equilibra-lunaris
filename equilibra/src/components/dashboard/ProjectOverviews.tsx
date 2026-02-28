@@ -15,9 +15,7 @@ import { Button } from '../../design-system/Button';
 import { Badge } from '../../design-system/Badge';
 import { ProgressBar } from '../../design-system/ProgressBar';
 import { useAlerts } from '../../controllers/useAlerts';
-import { useProjectMetrics } from '../../controllers/useProjectMetrics';
-import { useProjectMembers } from '../../controllers/useProjectMembers';
-import { useActivities } from '../../controllers/useActivities';
+import { useDashboard } from '../../controllers/useDashboard';
 import { useTasks } from '../../controllers/useTasks';
 import { useUserProjectStats } from '../../controllers/useUserProjectStats';
 import { useAuth } from '../../auth/useAuth';
@@ -30,10 +28,10 @@ interface ProjectOverviewProps {
 
 export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   const { alerts, loading: alertsLoading } = useAlerts(projectId);
-  const { metrics, loading: metricsLoading } = useProjectMetrics(projectId);
-  const { members, loading: membersLoading } = useProjectMembers(projectId);
-  const { activities, loading: activitiesLoading } = useActivities(projectId);
+  const { metrics, members, activity, loading: dashboardLoading } = useDashboard(projectId);
   const { tasks, loading: tasksLoading } = useTasks(projectId);
+
+  const activities = activity; // Alias for consistency in the template
 
   const criticalInsights = alerts.filter(a => a.severity === 'critical').slice(0, 3);
   const tasksAtRisk = tasks.filter(t => t.warnStagnant || t.status === 'ON REVIEW').slice(0, 3);
@@ -47,7 +45,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  const isLoading = alertsLoading || metricsLoading || membersLoading || activitiesLoading || tasksLoading;
+  const isLoading = alertsLoading || dashboardLoading || tasksLoading;
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
@@ -250,7 +248,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
 export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   const { user } = useAuth();
   const { tasks } = useTasks(projectId);
-  const { activities } = useActivities(projectId);
+  const { activity: activities } = useDashboard(projectId);
   const { stats } = useUserProjectStats(projectId);
 
   const myUserId = user?.db_user?.id || 1;
@@ -315,7 +313,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
           </SurfaceCard>
           <SurfaceCard title="Team Pulse" subtitle="Recent Activity" icon={TrendingDown}>
             <div className="space-y-4">
-              {activities.slice(0, 3).map((act) => (
+              {activities.slice(0, 3).map((act: any) => (
                 <div key={act.id!} className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] mt-1.5 flex-shrink-0" />
                   <div className="text-slate-400 text-[12px] min-w-0 flex-1">

@@ -13,7 +13,9 @@ export type AlertType = "STAGNATION" | "REALLOCATION" | "DRAFT_APPROVAL";
 export interface Bucket {
   id?: number | string;
   project_id: number | string;
+  name: string;
   state: string;
+  is_system_locked?: boolean;
   order_idx: number;
   created_at?: string;
   updated_at?: string;
