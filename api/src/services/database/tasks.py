@@ -141,8 +141,23 @@ def db_get_task_by_id(task_id: int):
         _put_conn(conn)
 
 
+class TaskUpdate(BaseModel):
+    project_id: Optional[SafeId] = None
+    bucket_id: Optional[SafeId] = None
+    meeting_id: Optional[SafeId] = None
+    parent_task_id: Optional[SafeId] = None
+    lead_assignee_id: Optional[SafeId] = None
+    suggested_assignee_id: Optional[SafeId] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+    weight: Optional[int] = None
+    branch_name: Optional[str] = None
+    last_activity_at: Optional[datetime] = None
+    order_idx: Optional[int] = None
+
 @db_router.put("/tasks/{task_id}")
-def db_update_task(task_id: int, task_data: DatabaseTask, background_tasks: BackgroundTasks):
+def db_update_task(task_id: int, task_data: TaskUpdate, background_tasks: BackgroundTasks):
     conn = _get_conn()
     cur = None
     try:

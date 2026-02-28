@@ -212,6 +212,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                 tasks={tasks}
                 buckets={buckets}
                 onDropTask={handleDropTask}
+                onUpdateTask={handleUpdateTask}
               />
             )
         )}
