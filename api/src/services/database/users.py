@@ -79,12 +79,12 @@ def db_get_users(username: Optional[str] = None):
         if username:
             search = f"%{username}%"
             cur.execute(
-                "SELECT id, display_name, created_at, telegram_chat_id, gh_username, gh_access_token, gh_id, email FROM public.users WHERE gh_username ILIKE %s;",
+                "SELECT id, display_name, created_at, gh_username, gh_id, email FROM public.users WHERE gh_username ILIKE %s;",
                 (search,)
             )
         else:
             cur.execute(
-                "SELECT id, display_name, created_at, telegram_chat_id, gh_username, gh_access_token, gh_id, email FROM public.users;"
+                "SELECT id, display_name, created_at, gh_username, gh_id, email FROM public.users;"
             )
         rows = cur.fetchall()
         return rows

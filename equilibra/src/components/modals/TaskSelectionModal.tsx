@@ -78,13 +78,19 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
     const tasksToSubmit: ExtractedTaskPayload[] = extractedTasks
       .map((t, i) => ({ task: t, origIndex: i }))
       .filter(({ origIndex }) => selectedIndices.has(origIndex))
-      .map(({ task, origIndex }) => ({
-        title: task.title,
-        description: task.description,
-        type: task.type ?? 'OTHER',
-        weight: task.weight ?? 3,
-        assignee_id: assignees[origIndex],
-      }));
+      .map(({ task, origIndex }) => {
+        const rawType = (task.type || '').toUpperCase();
+        const validTypes = ['CODE', 'REQUIREMENT', 'DESIGN', 'OTHER'];
+        const safeType = validTypes.includes(rawType) ? rawType : 'OTHER';
+
+        return {
+          title: task.title,
+          description: task.description,
+          type: safeType,
+          weight: task.weight ?? 3,
+          assignee_id: assignees[origIndex],
+        };
+      });
 
     try {
       await alertService.confirmTasks(alertId, projectId, tasksToSubmit);

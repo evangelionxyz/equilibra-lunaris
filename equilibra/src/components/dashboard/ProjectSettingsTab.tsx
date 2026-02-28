@@ -4,28 +4,25 @@ import { Settings, Users, Plus, Search, Save, X } from 'lucide-react';
 import { projectService } from '../../services/projectService';
 import { projectMemberService } from '../../services/projectMemberService';
 import { userService } from '../../services/userService';
-import { taskService } from '../../services/taskService';
 import { useToast } from '../../design-system/Toast';
-import type { Project, ProjectMember, User, Bucket } from '../../models';
+import type { Project, ProjectMember, User } from '../../models';
 
 interface ProjectSettingsTabProps {
     projectId: string | number;
 }
 
+// Hard-coded list of roles (no longer stored in the DB projects table).
+const DEFAULT_ROLES = ['Owner', 'Manager', 'Programmer', 'Designer', 'QA'];
+
 export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectId }) => {
     const [project, setProject] = useState<Project | null>(null);
     const [members, setMembers] = useState<ProjectMember[]>([]);
-    const [buckets, setBuckets] = useState<Bucket[]>([]);
     const [loading, setLoading] = useState(true);
     const { showToast } = useToast();
 
     // Project Edit State
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-
-    // Roles State
-    const [roles, setRoles] = useState<string[]>([]);
-    const [newRole, setNewRole] = useState('');
 
     // Add Member State
     const [searchQuery, setSearchQuery] = useState('');
@@ -37,16 +34,13 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
     const loadData = async () => {
         setLoading(true);
         try {
-            const [p, m, b] = await Promise.all([
+            const [p, m] = await Promise.all([
                 projectService.getProjectById(projectId),
                 projectMemberService.getMembers(projectId),
-                taskService.getBuckets(projectId)
             ]);
             setProject(p);
-            setBuckets(b);
             setName(p.name || '');
             setDescription(p.description || '');
-            setRoles(p.roles || ['Owner', 'Member']); // Default fallback
             setMembers(m);
         } catch (e) {
             console.error(e);
@@ -66,7 +60,6 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
                 ...project,
                 name,
                 description,
-                roles
             });
             setProject(updated);
             showToast('Project updated successfully', 'success');
@@ -74,17 +67,6 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
             console.error(e);
             showToast('Failed to update project', 'error');
         }
-    };
-
-    const handleAddRole = () => {
-        if (newRole.trim() && !roles.includes(newRole.trim())) {
-            setRoles([...roles, newRole.trim()]);
-            setNewRole('');
-        }
-    };
-
-    const handleRemoveRole = (role: string) => {
-        setRoles(roles.filter(r => r !== role));
     };
 
     useEffect(() => {
@@ -154,55 +136,6 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
                             className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none min-h-[100px]"
                         />
                     </div>
-                    <div className="pt-4 border-t border-[#374151]">
-                        <h4 className="text-[14px] font-bold text-white mb-4 flex items-center gap-2">
-                            GitHub Integration
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-[12px] font-medium text-slate-400 mb-1">Todo Bucket</label>
-                                <p className="text-[11px] text-slate-500 mb-2">Tasks move here when negative feedback is received.</p>
-                                <select
-                                    value={project?.todo_bucket_id?.toString() || ''}
-                                    onChange={e => setProject(project ? { ...project, todo_bucket_id: e.target.value ? Number(e.target.value) : undefined } : null)}
-                                    className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none"
-                                >
-                                    <option value="">Select a bucket...</option>
-                                    {buckets.map(b => (
-                                        <option key={b.id?.toString()} value={b.id?.toString()}>{b.state}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-[12px] font-medium text-slate-400 mb-1">In Review Bucket</label>
-                                <p className="text-[11px] text-slate-500 mb-2">Tasks move here when a Pull Request is opened.</p>
-                                <select
-                                    value={project?.in_review_bucket_id?.toString() || ''}
-                                    onChange={e => setProject(project ? { ...project, in_review_bucket_id: e.target.value ? Number(e.target.value) : undefined } : null)}
-                                    className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none"
-                                >
-                                    <option value="">Select a bucket...</option>
-                                    {buckets.map(b => (
-                                        <option key={b.id?.toString()} value={b.id?.toString()}>{b.state}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-[12px] font-medium text-slate-400 mb-1">Completed Bucket</label>
-                                <p className="text-[11px] text-slate-500 mb-2">Tasks move here when a Pull Request is merged.</p>
-                                <select
-                                    value={project?.completed_bucket_id?.toString() || ''}
-                                    onChange={e => setProject(project ? { ...project, completed_bucket_id: e.target.value ? Number(e.target.value) : undefined } : null)}
-                                    className="w-full bg-[#151A22] border border-[#374151] rounded-lg px-4 py-2 text-[14px] text-white focus:border-[#3B82F6] focus:outline-none"
-                                >
-                                    <option value="">Select a bucket...</option>
-                                    {buckets.map(b => (
-                                        <option key={b.id?.toString()} value={b.id?.toString()}>{b.state}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
 
                     <button
                         onClick={handleUpdateProject}
@@ -213,44 +146,6 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
                 </div>
             </SurfaceCard>
 
-            {/* Roles Management */}
-            <SurfaceCard title="Project Roles" subtitle="Manage available roles in this project" icon={Users} rightElement={null}>
-                <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                        {roles.map(r => (
-                            <div key={r} className="flex items-center gap-2 px-3 py-1.5 bg-[#1F2937] border border-[#374151] rounded-lg text-[13px] text-white">
-                                <span>{r}</span>
-                                <button onClick={() => handleRemoveRole(r)} className="text-slate-400 hover:text-red-400 transition-colors">
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={newRole}
-                            onChange={e => setNewRole(e.target.value)}
-                            placeholder="New Role Name"
-                            className="bg-[#151A22] border border-[#374151] rounded-lg px-3 py-1.5 text-[13px] text-white focus:border-[#3B82F6] focus:outline-none flex-1 max-w-[200px]"
-                        />
-                        <button
-                            onClick={handleAddRole}
-                            className="px-3 py-1.5 bg-[#374151] text-white rounded-lg text-[13px] font-semibold hover:bg-[#4B5563] disabled:opacity-50"
-                            disabled={!newRole.trim()}
-                        >
-                            Add Role
-                        </button>
-                        <button
-                            onClick={handleUpdateProject}
-                            className="flex items-center gap-2 px-4 py-1.5 bg-[#3B82F6] text-white rounded-lg text-[13px] font-bold hover:bg-[#2563EB] transition-colors ml-auto"
-                        >
-                            <Save size={14} /> Save Roles
-                        </button>
-                    </div>
-                </div>
-            </SurfaceCard>
-
             {/* Member Management */}
             <SurfaceCard title="Project Members" subtitle={`${members.length} members in project`} icon={Users} rightElement={null}>
                 <div className="space-y-6">
@@ -258,7 +153,7 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
                         {members.map(m => (
                             <div key={m.id} className="flex items-center justify-between p-3 rounded-xl border border-[#374151] bg-[#151A22]">
                                 <div>
-                                    <div className="text-[14px] font-medium text-white">{m.gh_username || `Unknown User (${m.user_id})`}</div>
+                                    <div className="text-[14px] font-medium text-white">{m.gh_username || `User ${m.user_id}`}</div>
                                     <div className="text-[12px] text-slate-400 mt-0.5">{m.role}</div>
                                 </div>
                             </div>
@@ -325,7 +220,7 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
                                         className="w-full bg-[#1F2937] border border-[#374151] rounded-lg px-3 py-2 text-[13px] text-white focus:border-[#3B82F6] focus:outline-none"
                                     >
                                         <option value="" disabled>Select a role</option>
-                                        {roles.map(r => (
+                                        {DEFAULT_ROLES.map(r => (
                                             <option key={r} value={r}>{r}</option>
                                         ))}
                                     </select>

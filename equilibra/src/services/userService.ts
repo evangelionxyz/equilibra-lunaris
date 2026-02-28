@@ -7,10 +7,14 @@ export const userService = {
   },
 
   searchUsers: async (username: string): Promise<User[]> => {
-    return await apiFetch<User[]>(`/users?username=${encodeURIComponent(username)}`);
+    return await apiFetch<User[]>(
+      `/users?username=${encodeURIComponent(username)}`,
+    );
   },
 
-  getProjectMembers: async (projectId: string | number): Promise<ProjectMember[]> => {
+  getProjectMembers: async (
+    projectId: string | number,
+  ): Promise<ProjectMember[]> => {
     const project = await apiFetch<{ members: number[] }>(
       `/projects/${projectId}`,
     );
