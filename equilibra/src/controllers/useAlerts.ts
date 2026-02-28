@@ -7,9 +7,9 @@ export const useAlerts = (projectId?: string | number) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAlerts = useCallback(async () => {
+  const fetchAlerts = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await alertService.getMyAlerts();
       const filtered = projectId
         ? data.filter((a) => String(a.project_id) === String(projectId))
@@ -19,15 +19,21 @@ export const useAlerts = (projectId?: string | number) => {
     } catch {
       setError("Failed to fetch alerts");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [projectId]);
 
   useEffect(() => {
     fetchAlerts();
+
+    const intervalId = setInterval(() => {
+      fetchAlerts(true);
+    }, 5000);
+
+    return () => clearInterval(intervalId);
   }, [fetchAlerts]);
 
-  const resolveAlert = useCallback(async (id: number) => {
+  const resolveAlert = useCallback(async (id: number | string) => {
     await alertService.resolveAlert(id);
     setAlerts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, is_resolved: true } : a)),

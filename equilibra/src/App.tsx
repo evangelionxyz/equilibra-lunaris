@@ -8,17 +8,21 @@ import { DashboardPage } from "./pages/Dashboard";
 import { WorkspacesPage } from "./pages/Workspaces";
 import { ProjectDetailsPage } from "./pages/ProjectDetails";
 import { NotificationsPage } from "./pages/Notifications";
+import { SettingsModal } from "./components/modals/SettingsModal";
+import { TelegramLinkPrompt } from "./components/notifications/TelegramLinkPrompt";
+import { useState } from "react";
 import "./App.css";
 
 function AppShell() {
   const { user, isLoading } = useAuth();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   if (isLoading) return <LoadingScreen message="Resolving session…" />;
   if (!user) return <LoginPage />;
 
   return (
     <div className="h-screen w-full bg-[#0B0E14] text-slate-300 font-sans flex overflow-hidden selection:bg-[#3B82F6]/30">
-      <Sidebar />
+      <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
 
       <main className="flex-1 overflow-y-auto no-scrollbar p-8 pb-32">
         <Routes>
@@ -30,6 +34,9 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <TelegramLinkPrompt onOpenSettings={() => setIsSettingsOpen(true)} />
     </div>
   );
 }

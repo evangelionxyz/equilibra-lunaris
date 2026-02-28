@@ -2,6 +2,7 @@ import { LayoutDashboard, Briefcase, Bell, Settings } from 'lucide-react';
 import { useAuth } from '../../auth/useAuth';
 import { getDisplayName } from '../../auth/displayName';
 import logo from '../../assets/logo.png';
+import { useAlerts } from '../../controllers/useAlerts';
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -11,10 +12,15 @@ const NAV_ITEMS = [
   { id: 'notifications', icon: Bell },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onOpenSettings?: () => void;
+}
+
+export function Sidebar({ onOpenSettings }: SidebarProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { alerts } = useAlerts();
 
   // Extract base path for active state highlighting (e.g., "/workspaces" -> "workspaces")
   const currentPage = location.pathname.split('/')[1] || 'dashboard';
@@ -38,26 +44,40 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex flex-col gap-4 w-full px-3">
-        {NAV_ITEMS.map(({ id, icon: Icon }) => (
-          <Link
-            key={id}
-            to={`/${id}`}
-            className={`p-3 rounded-xl transition-all flex justify-center w-full relative ${currentPage === id || (id === 'workspaces' && currentPage === 'projects')
+        {NAV_ITEMS.map(({ id, icon: Icon }) => {
+          const isActive = currentPage === id || (id === 'workspaces' && currentPage === 'projects');
+          const hasUnread = id === 'notifications' && alerts.length > 0;
+          return (
+            <Link
+              key={id}
+              to={`/${id}`}
+              className={`p-3 rounded-xl transition-all flex justify-center w-full relative ${isActive
                 ? 'bg-[#1F2937] text-[#3B82F6]'
                 : 'text-slate-500 hover:text-white hover:bg-[#151A22]'
-              }`}
-          >
-            <Icon size={20} strokeWidth={2.5} />
-            {(currentPage === id || (id === 'workspaces' && currentPage === 'projects')) && (
-              <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-8 bg-[#3B82F6] rounded-r" />
-            )}
-          </Link>
-        ))}
+                }`}
+            >
+              <div className="relative">
+                <Icon size={20} strokeWidth={2.5} />
+                {hasUnread && (
+                  <div className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-[#151A22] flex items-center justify-center text-[10px] font-bold text-white px-1">
+                    {alerts.length > 99 ? '99+' : alerts.length}
+                  </div>
+                )}
+              </div>
+              {isActive && (
+                <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-8 bg-[#3B82F6] rounded-r" />
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Bottom Actions */}
       <div className="mt-auto w-full flex flex-col gap-4 items-center">
-        <button className="text-slate-500 hover:text-white p-2">
+        <button
+          onClick={onOpenSettings}
+          className="text-slate-500 hover:text-white p-2"
+        >
           <Settings size={20} />
         </button>
         <button

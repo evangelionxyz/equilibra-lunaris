@@ -98,7 +98,10 @@ export const NotificationsPage: React.FC = () => {
               <div
                 key={alert.id!}
                 className="bg-[#151A22] border border-[#374151] p-5 rounded-2xl flex gap-5 items-center hover:bg-[#1A2030] transition-colors cursor-pointer group"
-                onClick={() => setSelectedAlert(alert)}
+                onClick={() => {
+                  if (!alert.is_resolved) resolveAlert(alert.id!);
+                  setSelectedAlert(alert);
+                }}
               >
                 <div className={`w-12 h-12 rounded-xl border flex items-center justify-center flex-shrink-0 ${colors.bg} ${colors.border} ${colors.text}`}>
                   {getAlertIcon(alert.type)}
@@ -124,7 +127,11 @@ export const NotificationsPage: React.FC = () => {
                     Dismiss
                   </button>
                   <button
-                    onClick={e => { e.stopPropagation(); setSelectedAlert(alert); }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (!alert.is_resolved) resolveAlert(alert.id!);
+                      setSelectedAlert(alert);
+                    }}
                     className="px-3 py-1.5 rounded-lg bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-[#3B82F6] text-[11px] font-bold hover:bg-[#3B82F6] hover:text-white transition-all flex items-center gap-1.5"
                   >
                     View <ArrowRight size={12} />

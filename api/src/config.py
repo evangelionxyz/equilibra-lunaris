@@ -40,10 +40,10 @@ class Settings(BaseSettings):
     )
     frontend_url: str = Field(default="http://127.0.0.1:5173", validation_alias=AliasChoices("FRONTEND_URL"))
     gemini_api_key: str = Field(validation_alias=AliasChoices("GEMINI_API_KEY"))
-    gh_oauth_redirect_uri: str = "http://127.0.0.1:8000/auth/callback"
+
     secret_key: str
     recall_api_key: str | None = None
-    telegram_bot_token: str | None = None
+    telegram_bot_token: Optional[str] = Field(None, validation_alias=AliasChoices("TELEGRAM_BOT_TOKEN"))
 
     # PostgreSQL
     postgresql_host: str = "localhost"

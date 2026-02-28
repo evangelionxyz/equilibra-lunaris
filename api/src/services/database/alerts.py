@@ -8,11 +8,13 @@ import psycopg2.extras
 from services.database.database import _get_conn, _put_conn
 from services.database.database import router as db_router
 from services.database.id_generator import _generator
+from services.telegram_service import send_telegram_message
 
 
 class DatabaseAlert(BaseModel):
     id: Optional[int] = None
     user_id: Optional[int] = None
+    context_id: Optional[int] = None
     project_id: Optional[int] = None
     title: Optional[str] = None
     description: Optional[str] = None
@@ -25,7 +27,75 @@ class DatabaseAlert(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# GET /alerts
+# CREATE /alerts
+# ---------------------------------------------------------------------------
+async def db_create_alert(alert_data: DatabaseAlert):
+    """
+    Creates an alert in the database and sends a Telegram notification if
+    the user has a linked Chat ID.
+    """
+    conn = _get_conn()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # 1. Generate ID and prepare data
+        alert_id = _generator.generate()
+        
+        # Suggested actions might be a list or None
+        suggested_actions = alert_data.suggested_actions or []
+        
+        # If context_id is omitted, we might default it to project_id or something similar if the schema allows, 
+        # but since it violated not-null, we must supply it.
+        context_id = alert_data.context_id if alert_data.context_id else alert_data.project_id
+        
+        sql = """
+            INSERT INTO public.alerts 
+                (id, user_id, context_id, project_id, title, description, type, severity, suggested_actions, is_resolved) 
+            VALUES 
+                (%s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE) 
+            RETURNING id, user_id, context_id, project_id, title, description, type, severity, suggested_actions, is_resolved, created_at;
+        """
+        
+        cur.execute(sql, (
+            alert_id,
+            str(alert_data.user_id), # We expect GitHub ID as per current convention
+            context_id,
+            alert_data.project_id,
+            alert_data.title,
+            alert_data.description,
+            alert_data.type,
+            alert_data.severity or "info",
+            suggested_actions
+        ))
+        
+        row = cur.fetchone()
+        conn.commit()
+        
+        # 2. Telegram Notification (Fire and Forget or Async)
+        try:
+            # Query for the user's telegram_chat_id
+            cur.execute("SELECT telegram_chat_id FROM public.users WHERE gh_id = %s LIMIT 1;", (str(alert_data.user_id),))
+            user_row = cur.fetchone()
+            
+            if user_row and user_row.get("telegram_chat_id"):
+                chat_id = user_row["telegram_chat_id"]
+                msg = f"🔔 *{alert_data.title}*\n\n{alert_data.description}"
+                await send_telegram_message(chat_id, msg)
+        except Exception as tele_err:
+            print(f"Failed to send Telegram notification: {tele_err}")
+            
+        return row
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cur is not None:
+            cur.close()
+        _put_conn(conn)
+
+
 # ---------------------------------------------------------------------------
 @db_router.get("/alerts")
 def db_get_alerts():
