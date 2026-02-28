@@ -5,6 +5,8 @@ from fastapi import BackgroundTasks
 from services.database.database import _get_conn, _put_conn
 import psycopg2.extras
 import re
+from github_app import get_github_client
+from services.database.id_generator import _generator
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -26,9 +28,118 @@ async def process_github_event(payload: dict, event: str, pool=None):
             await on_pr_review_submitted(payload, pool)
 
 async def sync_github_tasks(payload: dict):
-    """Placeholder for task synchronization logic."""
-    # TODO: Implement synchronization of tasks from GitHub to local DB
-    pass
+    """Synchronization of tasks from GitHub tasks.md files to local DB."""
+    repo_full_name = payload.get("repository", {}).get("full_name")
+    repo_url = payload.get("repository", {}).get("html_url")
+    installation_id = payload.get("installation", {}).get("id")
+    
+    if not repo_full_name or not installation_id:
+        return
+
+    try:
+        gh = get_github_client(installation_id)
+        repo = gh.get_repo(repo_full_name)
+        
+        # 1. Sweep for tasks.md files in openspec/changes/
+        try:
+            contents = repo.get_contents("openspec/changes")
+        except:
+            logger.info(f"No openspec/changes directory found in {repo_full_name}")
+            return
+
+        all_tasks = []
+        for item in contents:
+            if item.type == "dir":
+                try:
+                    task_files = repo.get_contents(item.path)
+                    for tf in task_files:
+                        if tf.name == "tasks.md":
+                            content = tf.decoded_content.decode("utf-8")
+                            # Simple parser for - [ ] Task Title
+                            lines = content.splitlines()
+                            for line in lines:
+                                match = re.search(r"^- \[[ xX]\] (.*)$", line)
+                                if match:
+                                    all_tasks.append(match.group(1).strip())
+                except Exception as e:
+                    logger.warning(f"Error reading tasks.md in {item.path}: {e}")
+                    continue
+        
+        if not all_tasks:
+            logger.info(f"No tasks found in openspec/changes/ for {repo_full_name}")
+            return
+
+        # 2. Sync with DB
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            # Find project by repo URL
+            cur.execute("SELECT id FROM public.projects WHERE %s = ANY(gh_repo_url) LIMIT 1;", (repo_url,))
+            project_row = cur.fetchone()
+            
+            if not project_row:
+                # Zero-Config: Create project
+                project_id = _generator.generate()
+                cur.execute(
+                    "INSERT INTO public.projects (id, name, gh_repo_url) VALUES (%s, %s, %s) RETURNING id;",
+                    (project_id, repo_full_name.split("/")[-1], [repo_url])
+                )
+                project_id = cur.fetchone()["id"]
+                
+                # Create default DRAFT bucket
+                bucket_id = _generator.generate()
+                cur.execute(
+                    "INSERT INTO public.buckets (id, project_id, name, state, is_system_locked, order_idx) "
+                    "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;",
+                    (bucket_id, project_id, "AI Drafts", "DRAFT", True, 0)
+                )
+                target_bucket_id = cur.fetchone()["id"]
+                logger.info(f"Zero-Config: Created project {project_id} and DRAFT bucket for {repo_full_name}")
+            else:
+                project_id = project_row["id"]
+                # Find DRAFT bucket
+                cur.execute("SELECT id FROM public.buckets WHERE project_id = %s AND state = 'DRAFT' LIMIT 1;", (project_id,))
+                bucket_row = cur.fetchone()
+                if bucket_row:
+                    target_bucket_id = bucket_row["id"]
+                else:
+                    # Create if missing
+                    bucket_id = _generator.generate()
+                    cur.execute(
+                        "INSERT INTO public.buckets (id, project_id, name, state, is_system_locked, order_idx) "
+                        "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;",
+                        (bucket_id, project_id, "AI Drafts", "DRAFT", True, 0)
+                    )
+                    target_bucket_id = cur.fetchone()["id"]
+
+            # Upsert tasks
+            created_count = 0
+            for task_title in all_tasks:
+                # Check if task already exists
+                cur.execute("SELECT id FROM public.tasks WHERE project_id = %s AND title = %s LIMIT 1;", (project_id, task_title))
+                if cur.fetchone():
+                    continue
+                
+                # Insert new task
+                task_id = _generator.generate()
+                cur.execute(
+                    "INSERT INTO public.tasks (id, project_id, bucket_id, title, type, weight) VALUES (%s, %s, %s, %s, 'CODE', 1);",
+                    (task_id, project_id, target_bucket_id, task_title)
+                )
+                created_count += 1
+            
+            conn.commit()
+            if created_count > 0:
+                logger.info(f"Successfully synced {created_count} new tasks for {repo_full_name}")
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error syncing tasks to DB for {repo_full_name}: {e}")
+        finally:
+            cur.close()
+            _put_conn(conn)
+            
+    except Exception as e:
+        logger.error(f"Error fetching tasks from GitHub for {repo_full_name}: {e}")
 
 async def on_pr_opened(payload: dict, pool=None):
     # 1. AI Evaluation
