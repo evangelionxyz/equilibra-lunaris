@@ -32,7 +32,7 @@ export const useTasks = (projectId?: string | number) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, showToast]);
 
   useEffect(() => {
     fetchTasks();
@@ -60,7 +60,7 @@ export const useTasks = (projectId?: string | number) => {
         throw err;
       }
     },
-    [fetchTasks],
+    [fetchTasks, showToast],
   );
 
   const updateTask = useCallback(
@@ -84,7 +84,7 @@ export const useTasks = (projectId?: string | number) => {
         throw err;
       }
     },
-    [fetchTasks],
+    [fetchTasks, showToast],
   );
 
   const deleteTask = useCallback(
@@ -103,7 +103,7 @@ export const useTasks = (projectId?: string | number) => {
         throw err;
       }
     },
-    [fetchTasks],
+    [fetchTasks, showToast],
   );
 
   const reorderTasks = useCallback(

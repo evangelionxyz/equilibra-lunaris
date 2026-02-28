@@ -348,7 +348,7 @@ def find_project_bucket_by_state(repo_url: str, target_state: str):
         
         # The Magic Query
         cur.execute(
-            "SELECT id FROM public.buckets WHERE project_id = %s AND state = %s AND is_deleted = False ORDER BY order_idx ASC LIMIT 1;", 
+            "SELECT id FROM public.buckets WHERE project_id = %s AND state = %s ORDER BY order_idx ASC LIMIT 1;", 
             (project_row["id"], target_state)
         )
         bucket_row = cur.fetchone()

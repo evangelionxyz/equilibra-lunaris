@@ -6,7 +6,7 @@ export const meetingService = {
     return await apiFetch<Meeting[]>(`/meetings/project/${projectId}`);
   },
 
-  createMeeting: async (meetingData: any): Promise<Meeting> => {
+  createMeeting: async (meetingData: unknown): Promise<Meeting> => {
     return await apiFetch<Meeting>("/meetings", {
       method: "POST",
       body: JSON.stringify(meetingData),

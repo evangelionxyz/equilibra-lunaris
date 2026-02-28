@@ -25,7 +25,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             await refreshUser();
             setMessage({ type: 'success', text: 'Settings updated successfully!' });
             setTimeout(() => setMessage(null), 3000);
-        } catch (err) {
+        } catch {
             setMessage({ type: 'error', text: 'Failed to update settings. Please try again.' });
         } finally {
             setIsSaving(false);

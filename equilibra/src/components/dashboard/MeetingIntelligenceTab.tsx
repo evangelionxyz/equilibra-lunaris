@@ -27,6 +27,7 @@ interface AnalyzerResult {
 
 interface MeetingIntelligenceTabProps {
     projectId: string | number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onMeetingCreated?: (data: any) => Promise<any>;
 }
 
@@ -58,7 +59,7 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
     // Polling effect for background processing (Meeting Link)
     useEffect(() => {
-        let interval: any;
+        let interval: ReturnType<typeof setInterval>;
         if (view === 'processing') {
             interval = setInterval(async () => {
                 const response = await fetch(`http://localhost:8000/meetings/project/${projectId}`, { credentials: 'include' });
@@ -70,11 +71,11 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
                             const momContent = JSON.parse(latest.mom_content);
                             const momData = momContent.mom || momContent;
 
-                            const transformedTasks: Task[] = (latest.proposed_tasks || []).map((t: any, i: number) => ({
+                            const transformedTasks: Task[] = (latest.proposed_tasks || []).map((t: Record<string, unknown>, i: number) => ({
                                 id: `task-bg-${i}-${Date.now()}`,
                                 title: t.title,
                                 pic: t.assignee_username || 'TBD',
-                                priority: (t.priority?.toLowerCase() as any) || 'medium',
+                                priority: ((t.priority as string)?.toLowerCase() as Task['priority']) || 'medium',
                                 due_date: t.due_date || 'TBD',
                                 completed: false
                             }));
@@ -94,6 +95,7 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
             }, 5000);
         }
         return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, lastMeetingCount]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,11 +121,11 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
             const data = await response.json();
 
-            const transformedTasks: Task[] = (data.proposed_tasks || []).map((t: any, index: number) => ({
+            const transformedTasks: Task[] = (data.proposed_tasks || []).map((t: Record<string, unknown>, index: number) => ({
                 id: `task-${index}-${Date.now()}`,
                 title: t.title,
                 pic: t.assignee_username || 'TBD',
-                priority: (t.priority?.toLowerCase() as any) || 'medium',
+                priority: ((t.priority as string)?.toLowerCase() as Task['priority']) || 'medium',
                 due_date: t.due_date || 'TBD',
                 completed: false
             }));
@@ -140,8 +142,8 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
             }
 
             setView('result');
-        } catch (err: any) {
-            setError(err.message || 'Something went wrong during analysis');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'Something went wrong during analysis');
             setView('choice');
         }
     };
@@ -166,8 +168,8 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
 
             setView('processing');
             setMeetingUrl('');
-        } catch (err: any) {
-            setError(err.message || 'Failed to invite meeting bot');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'Failed to invite meeting bot');
             setView('choice');
         }
     };
