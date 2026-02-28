@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Task, TaskType, TaskStatus } from "../models";
+import type { Task, TaskType } from "../models";
 import { taskService } from "../services/taskService";
 import { useToast } from "../design-system/Toast";
 
@@ -20,7 +20,9 @@ export const useTasks = (projectId?: string | number) => {
         return;
       }
       const data = await taskService.getTasksByProject(projectId);
-      const sorted = data.sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+      const sorted = data.sort(
+        (a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0),
+      );
       setTasks(sorted);
       setError(null);
     } catch (err) {
@@ -42,7 +44,6 @@ export const useTasks = (projectId?: string | number) => {
       title: string;
       type: TaskType;
       weight: number;
-      status?: TaskStatus;
       bucket_id?: number | string;
     }) => {
       try {
@@ -67,7 +68,9 @@ export const useTasks = (projectId?: string | number) => {
       try {
         // Optimistic local update
         setTasks((prev) =>
-          prev.map((t) => (String(t.id) === String(id) ? { ...t, ...data } : t)),
+          prev.map((t) =>
+            String(t.id) === String(id) ? { ...t, ...data } : t,
+          ),
         );
 
         const updated = await taskService.updateTask(id, data);
@@ -84,21 +87,24 @@ export const useTasks = (projectId?: string | number) => {
     [fetchTasks],
   );
 
-  const deleteTask = useCallback(async (id: string | number) => {
-    try {
-      // Optimistic local update
-      setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
+  const deleteTask = useCallback(
+    async (id: string | number) => {
+      try {
+        // Optimistic local update
+        setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
 
-      await taskService.deleteTask(id);
-      showToast("Task deleted", "success");
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to delete task", "error");
-      // Rollback on failure by refetching
-      fetchTasks();
-      throw err;
-    }
-  }, [fetchTasks]);
+        await taskService.deleteTask(id);
+        showToast("Task deleted", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to delete task", "error");
+        // Rollback on failure by refetching
+        fetchTasks();
+        throw err;
+      }
+    },
+    [fetchTasks],
+  );
 
   const reorderTasks = useCallback(
     async (bucketId: string | number, taskIds: (string | number)[]) => {
@@ -106,8 +112,8 @@ export const useTasks = (projectId?: string | number) => {
         if (!projectId) return;
 
         // Optimistic UI update
-        setTasks(prev => {
-          const map = new Map(prev.map(t => [String(t.id), t]));
+        setTasks((prev) => {
+          const map = new Map(prev.map((t) => [String(t.id), t]));
 
           taskIds.forEach((id, index) => {
             const task = map.get(String(id));
@@ -117,7 +123,9 @@ export const useTasks = (projectId?: string | number) => {
             }
           });
 
-          return Array.from(map.values()).sort((a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0));
+          return Array.from(map.values()).sort(
+            (a, b) => (a.order_idx ?? 0) - (b.order_idx ?? 0),
+          );
         });
 
         // API call
@@ -128,8 +136,16 @@ export const useTasks = (projectId?: string | number) => {
         throw err;
       }
     },
-    [projectId, fetchTasks]
+    [projectId, fetchTasks],
   );
 
-  return { tasks, loading, error, createTask, updateTask, deleteTask, reorderTasks };
+  return {
+    tasks,
+    loading,
+    error,
+    createTask,
+    updateTask,
+    deleteTask,
+    reorderTasks,
+  };
 };

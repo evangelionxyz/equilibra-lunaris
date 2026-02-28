@@ -19,7 +19,7 @@ import { useProjectMembers } from '../controllers/useProjectMembers';
 import { projectService } from '../services/projectService';
 import { useNavigate } from 'react-router-dom';
 
-import type { TaskType, TaskStatus, Project, Task } from '../models';
+import type { TaskType, Project, Task } from '../models';
 
 interface ProjectDetailsProps {
   projectId: string | number;
@@ -57,7 +57,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const [newBucketName, setNewBucketName] = useState('');
   const [isCreatingBucket, setIsCreatingBucket] = useState(false);
 
-  const handleCreateTask = async (data: { project_id: number | string; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number | string }) => {
+  const handleCreateTask = async (data: { project_id: number | string; title: string; type: TaskType; weight: number; bucket_id?: number | string }) => {
     await createTask(data);
   };
 
