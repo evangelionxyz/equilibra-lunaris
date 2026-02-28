@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { X, CheckSquare } from 'lucide-react';
-import type { Task, TaskType, TaskStatus } from '../../models';
+import type { Task, TaskType } from '../../models';
 
 const TASK_TYPES: TaskType[] = ['CODE', 'REQUIREMENT', 'DESIGN', 'NON-CODE', 'OTHER'];
-const TASK_STATUSES: TaskStatus[] = ['TODO', 'ONGOING', 'ON REVIEW', 'COMPLETED', 'DRAFT', 'PENDING'];
 
 interface TaskFormModalProps {
   projectId: number | string;
   onClose: () => void;
-  onSubmit: (data: { project_id: number | string; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number | string }) => Promise<void>;
+  onSubmit: (data: { project_id: number | string; title: string; type: TaskType; weight: number; bucket_id?: number | string }) => Promise<void>;
   initial?: Partial<Task>;
   title?: string;
 }
@@ -19,26 +18,18 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const [taskTitle, setTaskTitle] = useState(initial.title ?? '');
   const [type, setType] = useState<TaskType>(initial.type ?? 'CODE');
   const [weight, setWeight] = useState(initial.weight ?? 3);
-  const [status, setStatus] = useState<TaskStatus>(initial.status ?? 'TODO');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
     setSaving(true);
-    await onSubmit({ project_id: projectId, title: taskTitle.trim(), type, weight, status, bucket_id: initial.bucket_id ? Number(initial.bucket_id) : undefined });
+    await onSubmit({ project_id: projectId, title: taskTitle.trim(), type, weight, bucket_id: initial.bucket_id });
     setSaving(false);
     onClose();
   };
 
-  const statusColors: Record<TaskStatus, string> = {
-    DRAFT: 'bg-slate-700 text-slate-300    border-slate-600',
-    PENDING: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30',
-    TODO: 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/30',
-    ONGOING: 'bg-[#8B5CF6]/10 text-[#8B5CF6] border-[#8B5CF6]/30',
-    'ON REVIEW': 'bg-[#EC4899]/10 text-[#EC4899] border-[#EC4899]/30',
-    COMPLETED: 'bg-[#16A34A]/10 text-[#22C55E] border-[#16A34A]/30',
-  };
+
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -92,22 +83,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
-            <div className="flex flex-wrap gap-2">
-              {TASK_STATUSES.map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatus(s)}
-                  className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-all ${status === s ? statusColors[s] : 'bg-[#0B0E14] text-slate-500 border-[#374151] hover:border-slate-500'
-                    }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg text-[13px] text-slate-400 border border-[#374151] hover:text-white hover:border-slate-500 transition-all">
