@@ -40,7 +40,7 @@ export async function apiFetch<T>(
         let errorData: any = {};
         try {
           const text = await response.text();
-          errorData = text ? JSONBig({ storeAsString: false }).parse(text) : {};
+          errorData = text ? JSONBig({ storeAsString: true }).parse(text) : {};
         } catch (e) {
           // ignore parsing error for error bodies
         }
@@ -52,7 +52,7 @@ export async function apiFetch<T>(
       }
 
       const text = await response.text();
-      return (text ? JSONBig({ storeAsString: false }).parse(text) : {}) as T;
+      return (text ? JSONBig({ storeAsString: true }).parse(text) : {}) as T;
     } catch (error) {
       console.error(`Fetch error at ${url}:`, error);
       throw error;

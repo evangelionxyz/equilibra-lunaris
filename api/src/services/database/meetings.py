@@ -6,12 +6,12 @@ import psycopg2
 import psycopg2.extras
 import json
 
-from services.database.database import _get_conn, _put_conn
+from services.database.database import _get_conn, _put_conn, SafeId
 from services.database.database import router as db_router
 
 class DatabaseMeeting(BaseModel):
-    id: Optional[int] = None
-    project_id: Optional[int] = None
+    id: Optional[SafeId] = None
+    project_id: Optional[SafeId] = None
     user_uuid: Optional[str] = None
     title: Optional[str] = None
     date: Optional[str] = None
@@ -83,7 +83,7 @@ def db_create_meeting(meeting: DatabaseMeeting):
 
 
 @db_router.get("/db-meetings/project/{project_id}")
-def db_get_meetings_by_project(project_id: int):
+def db_get_meetings_by_project(project_id: SafeId):
     conn = _get_conn()
     cur = None
     try:

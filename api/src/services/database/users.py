@@ -7,18 +7,18 @@ import psycopg2.extras
 
 from services.database.database import _get_conn
 from services.database.database import _put_conn
-from services.database.database import router as db_router
+from services.database.database import router as db_router, SafeId
 from services.database.id_generator import _generator
 
 
 class DatabaseUser(BaseModel):
-    id: Optional[int] = None
+    id: Optional[SafeId] = None
     display_name: Optional[str] = None
     created_at: Optional[datetime] = None
     telegram_chat_id: str
     gh_username: str
     gh_access_token: Optional[str] = None
-    gh_id: Optional[str] = None
+    gh_id: Optional[SafeId] = None
     email: Optional[str] = None
 
 
@@ -194,7 +194,7 @@ class UserUpdate(BaseModel):
     telegram_chat_id: Optional[str] = None
     gh_username: Optional[str] = None
     gh_access_token: Optional[str] = None
-    gh_id: Optional[str] = None
+    gh_id: Optional[SafeId] = None
     email: Optional[str] = None
 
 @db_router.put("/users/{user_id}")
