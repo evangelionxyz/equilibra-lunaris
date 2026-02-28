@@ -52,7 +52,6 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
     } else if (columnIdString && onDropColumn) {
       e.preventDefault();
       e.stopPropagation();
-      // Pass `id` (this column = drop target), not columnIdString (the dragged column)
       onDropColumn(e, id);
     }
   };
