@@ -22,7 +22,7 @@ export const useMeetings = (projectId: string | number) => {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, showToast]);
 
   useEffect(() => {
     fetchMeetings();
@@ -38,7 +38,7 @@ export const useMeetings = (projectId: string | number) => {
       source_type?: MeetingSource | string;
       mom_summary?: string;
       key_decisions?: string[];
-      action_items?: any[];
+      action_items?: unknown[];
     }) => {
       try {
         const created = await meetingService.createMeeting(data);
@@ -51,7 +51,7 @@ export const useMeetings = (projectId: string | number) => {
         throw err;
       }
     },
-    [],
+    [showToast],
   );
 
   const deleteMeeting = useCallback(

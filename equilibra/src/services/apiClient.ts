@@ -3,7 +3,7 @@ import JSONBig from "json-bigint";
 const BASE_URL = "http://localhost:8000";
 
 // Map to cleanly deduplicate concurrent identical GET requests
-const pendingGetRequests = new Map<string, Promise<any>>();
+const pendingGetRequests = new Map<string, Promise<unknown>>();
 
 export async function apiFetch<T>(
   endpoint: string,
@@ -37,17 +37,17 @@ export async function apiFetch<T>(
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        let errorData: any = {};
+        let errorData: Record<string, unknown> = {};
         try {
           const text = await response.text();
           errorData = text ? JSONBig({ storeAsString: true }).parse(text) : {};
-        } catch (e) {
+        } catch {
           // ignore parsing error for error bodies
         }
 
         throw new Error(
-          errorData.detail ||
-            `API Error: ${response.status} ${response.statusText}`,
+          (errorData.detail as string) ||
+          `API Error: ${response.status} ${response.statusText}`,
         );
       }
 

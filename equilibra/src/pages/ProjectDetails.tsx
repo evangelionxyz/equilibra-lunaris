@@ -55,7 +55,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const dbUserId = user?.db_user?.id;
 
   const { role, loading: roleLoading } = useCurrentUserRole(projectId, dbUserId);
-  
+
   const isManager = role?.toUpperCase() === 'MANAGER' || role?.toUpperCase() === 'OWNER';
   const { members } = useProjectMembers(projectId);
   // useBoard: single request for both buckets and tasks (strict data contract)
@@ -151,13 +151,13 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     await reorderBuckets(newBuckets.map(b => b.id!));
     await Promise.all([refreshBoard(true), refreshDashboard(true)]);
   };
- 
-  const tabs = isManager 
-    ? ['Overview', 'Tasks', 'MoM & Meetings', 'Settings'] 
+
+  const tabs = isManager
+    ? ['Overview', 'Tasks', 'MoM & Meetings', 'Settings']
     : ['Overview', 'Tasks', 'MoM & Meetings'];
 
   const isLoading = roleLoading || boardLoading || meetingsLoading;
- 
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-500 text-[14px] min-h-[400px]">
@@ -207,11 +207,12 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         {activeTab === 'Overview' && (
           roleLoading ? <div className="text-slate-500 py-10 text-center">Resolving permissions...</div> :
             isManager ? <ProjectOverviewPM projectId={projectId} /> : (
-              <ProjectOverviewDev 
-                projectId={projectId} 
-                tasks={tasks} 
-                buckets={buckets} 
+              <ProjectOverviewDev
+                projectId={projectId}
+                tasks={tasks}
+                buckets={buckets}
                 onDropTask={handleDropTask}
+                onUpdateTask={handleUpdateTask}
               />
             )
         )}
@@ -413,7 +414,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
               await deleteBucket(bucketToDelete);
               setBucketToDelete(null);
               await Promise.all([refreshBoard(true), refreshDashboard(true)]);
-            } catch (err) {
+            } catch {
               setBucketToDelete(null);
             }
           }}

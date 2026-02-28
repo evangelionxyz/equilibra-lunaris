@@ -54,7 +54,8 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
   const toggle = (idx: number) => {
     setSelectedIndices(prev => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
       return next;
     });
   };
@@ -179,8 +180,8 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
                 key={idx}
                 onClick={() => toggle(idx)}
                 className={`w-full text-left rounded-xl border p-4 transition-all duration-150 flex gap-3 group ${selected
-                    ? 'bg-[#151A22] border-[#4F46E5]/60 shadow-[0_0_0_1px_rgba(79,70,229,0.2)]'
-                    : 'bg-[#0D1017] border-[#1F2937] hover:border-[#374151]'
+                  ? 'bg-[#151A22] border-[#4F46E5]/60 shadow-[0_0_0_1px_rgba(79,70,229,0.2)]'
+                  : 'bg-[#0D1017] border-[#1F2937] hover:border-[#374151]'
                   }`}
               >
                 {/* Checkbox icon */}

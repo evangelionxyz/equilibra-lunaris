@@ -27,6 +27,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTitle(task.title);
         setDescription(task.description || '');
         setType(task.type);

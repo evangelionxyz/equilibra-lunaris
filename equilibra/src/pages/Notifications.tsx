@@ -18,6 +18,7 @@ export const NotificationsPage: React.FC = () => {
   const getProjectName = (id: number) => allProjects.find(p => p.id === id)?.name || `Project #${id}`;
 
   const getTimeAgo = (dateStr: string) => {
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / (1000 * 60));
     if (mins < 2) return 'Just now';
@@ -114,7 +115,7 @@ export const NotificationsPage: React.FC = () => {
                     <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
                       <Clock size={10} /> {getTimeAgo(alert.created_at!)}
                     </span>
-                    <span className="text-[#3B82F6] text-[10px] font-bold">• {getProjectName(alert.project_id)}</span>
+                    <span className="text-[#3B82F6] text-[10px] font-bold">• {getProjectName(Number(alert.project_id))}</span>
                   </div>
                   <h3 className="text-white font-bold text-[15px] truncate">{alert.title}</h3>
                   <p className="text-slate-400 text-[12px] mt-0.5 line-clamp-1">{alert.description}</p>
@@ -163,7 +164,7 @@ export const NotificationsPage: React.FC = () => {
                     <Badge variant={isDraftApproval ? 'primary' : selectedAlert.severity === 'critical' ? 'critical' : 'warning'} className="uppercase">
                       {selectedAlert.type?.replace('_', ' ')}
                     </Badge>
-                    <span className="text-slate-400 text-[12px] font-medium">{getProjectName(selectedAlert.project_id)}</span>
+                    <span className="text-slate-400 text-[12px] font-medium">{getProjectName(Number(selectedAlert.project_id))}</span>
                   </div>
                   <h2 className="text-white text-[18px] font-bold leading-tight">{selectedAlert.title}</h2>
                 </div>

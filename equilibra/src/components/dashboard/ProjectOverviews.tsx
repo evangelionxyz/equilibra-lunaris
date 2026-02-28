@@ -31,6 +31,7 @@ interface ProjectOverviewDevProps extends ProjectOverviewProps {
   tasks: Task[];
   buckets: Bucket[];
   onDropTask: (taskId: string | number, newBucketId: string | number, targetTaskId?: string | number) => Promise<void>;
+  onUpdateTask: (taskId: string | number, data: Partial<Task>) => Promise<void>;
 }
 
 export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId }) => {
@@ -148,7 +149,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
                   <div key={m.id!}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-white text-[12px] font-bold uppercase tracking-wider">{m.label}</span>
-                      <Badge variant={m.status as any} className="!text-[8px] uppercase">{m.status}</Badge>
+                      <Badge variant={m.status as "success" | "warning" | "critical" | "primary" | "default" | "outline"} className="!text-[8px] uppercase">{m.status}</Badge>
                     </div>
                     <div className="flex items-end gap-2 mb-2">
                       <span className="text-[32px] text-white font-bold leading-none">{m.value.replace(/[^0-9]/g, '')}<span className="text-[16px] text-slate-500 font-medium ml-1">{m.value.replace(/[0-9]/g, '')}</span></span>
@@ -172,7 +173,7 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
               {isLoading ? (
                 [1, 2, 3, 4, 5, 6].map(i => (
                   <div key={i} className="flex-1 flex flex-col items-center">
-                    <Skeleton width="100%" height={Math.random() * 60 + 40} className="rounded-t-sm" />
+                    <Skeleton width="100%" height={50 + (i * 10) % 40} className="rounded-t-sm" />
                     <Skeleton width="60%" height={8} className="mt-2" />
                     <Skeleton width="40%" height={8} className="mt-1" />
                   </div>
@@ -252,31 +253,46 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
   );
 };
 
-export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({ 
-  projectId, 
+export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
+  projectId,
   tasks,
   buckets,
-  onDropTask
+  onDropTask,
+  onUpdateTask
 }) => {
   const { user } = useAuth();
   const { activity: activities } = useDashboard(projectId);
   const { stats } = useUserProjectStats(projectId);
 
   const myUserId = user?.db_user?.id;
-  
+
   // Find which tasks are in which buckets based on state
-  const getTasksByBucketState = (state: string) => {
+  const getTasksByBucketState = (state: string, assignedOnly = true) => {
     const bucketIds = buckets.filter(b => b.state === state).map(b => String(b.id));
-    return tasks.filter(t => bucketIds.includes(String(t.bucket_id)) && String(t.lead_assignee_id) === String(myUserId));
+    return tasks.filter(t => {
+      const isInBucket = bucketIds.includes(String(t.bucket_id));
+      if (!isInBucket) return false;
+      if (assignedOnly) return String(t.lead_assignee_id) === String(myUserId);
+      return !t.lead_assignee_id || String(t.lead_assignee_id) === String(myUserId);
+    });
   };
 
   const activeTask = getTasksByBucketState('ONGOING')[0];
   const myReviewTasks = getTasksByBucketState('ON_REVIEW');
-  const myQueueTasks = getTasksByBucketState('TODO').slice(0, 3);
+  
+  // Show TODO, PENDING, and DRAFT tasks in the queue (including unassigned)
+  const myQueueTasks = [
+    ...getTasksByBucketState('TODO', false),
+    ...getTasksByBucketState('PENDING', false),
+    ...getTasksByBucketState('DRAFT', false)
+  ].filter(t => !activeTask || t.id !== activeTask.id).slice(0, 5);
 
   const handleStartWork = async (taskId: string | number) => {
     const ongoingBucket = buckets.find(b => b.state === 'ONGOING');
     if (!ongoingBucket) return;
+    
+    // Auto-assign to me if not already assigned
+    await onUpdateTask(taskId, { lead_assignee_id: myUserId });
     await onDropTask(taskId, ongoingBucket.id!);
   };
 
@@ -343,7 +359,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
           </SurfaceCard>
           <SurfaceCard title="Team Pulse" subtitle="Recent Activity" icon={TrendingDown}>
             <div className="space-y-4">
-              {activities.slice(0, 3).map((act: any) => (
+              {activities.slice(0, 3).map((act: { id?: string | number; user_name?: string; action?: string; target?: string }) => (
                 <div key={act.id!} className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] mt-1.5 flex-shrink-0" />
                   <div className="text-slate-400 text-[12px] min-w-0 flex-1">
@@ -371,8 +387,8 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
         <SurfaceCard title="My Queue" subtitle="Up Next" icon={Target} rightElement={<Badge>{myQueueTasks.length} Pending</Badge>}>
           <div className="space-y-3">
             {myQueueTasks.map((t) => (
-              <div 
-                key={t.id!} 
+              <div
+                key={t.id!}
                 className="p-3 rounded-lg bg-[#1F2937] border border-[#374151] flex flex-col gap-1 hover:border-[#3B82F6] transition-colors cursor-pointer"
                 onClick={() => handleStartWork(t.id!)}
               >
@@ -382,7 +398,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({
                 </div>
                 <h5 className="text-white text-[13px] font-semibold mt-1 truncate">{t.title}</h5>
                 <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-2 flex justify-between items-center">
-                  <span>{t.bucket_id ? buckets.find(b => String(b.id) === String(t.bucket_id))?.state : 'TODO'}</span> 
+                  <span>{t.bucket_id ? buckets.find(b => String(b.id) === String(t.bucket_id))?.state : 'TODO'}</span>
                   <div className="w-5 h-5 rounded-full bg-[#1F2937] border border-[#374151] text-white flex items-center justify-center text-[8px] font-bold">ME</div>
                 </div>
               </div>

@@ -46,7 +46,7 @@ export const MeetingAnalyzer: React.FC = () => {
 
     // Polling effect
     React.useEffect(() => {
-        let interval: any;
+        let interval: ReturnType<typeof setInterval>;
         if (view === 'processing') {
             interval = setInterval(async () => {
                 const response = await fetch('/api/meetings', { credentials: 'include' });
@@ -62,11 +62,11 @@ export const MeetingAnalyzer: React.FC = () => {
                             const momData = momContent.mom || momContent;
 
                             // Map tasks from the meeting object's proposed_tasks
-                            const transformedTasks: Task[] = (latest.proposed_tasks || []).map((t: any, i: number) => ({
+                            const transformedTasks: Task[] = (latest.proposed_tasks || []).map((t: Record<string, unknown>, i: number) => ({
                                 id: `task-bg-${i}-${Date.now()}`,
                                 title: t.title,
                                 pic: t.assignee_username || 'TBD',
-                                priority: (t.priority?.toLowerCase() as any) || 'medium',
+                                priority: ((t.priority as string)?.toLowerCase() as Task['priority']) || 'medium',
                                 due_date: t.due_date || 'TBD',
                                 completed: false
                             }));
@@ -111,11 +111,11 @@ export const MeetingAnalyzer: React.FC = () => {
             const data = await response.json();
 
             // Transform backend data to our frontend state
-            const transformedTasks: Task[] = (data.proposed_tasks || []).map((t: any, index: number) => ({
+            const transformedTasks: Task[] = (data.proposed_tasks || []).map((t: Record<string, unknown>, index: number) => ({
                 id: `task-${index}-${Date.now()}`,
                 title: t.title,
                 pic: t.assignee_username || 'TBD',
-                priority: (t.priority?.toLowerCase() as any) || 'medium',
+                priority: ((t.priority as string)?.toLowerCase() as Task['priority']) || 'medium',
                 due_date: t.due_date || 'TBD',
                 completed: false
             }));
@@ -125,8 +125,8 @@ export const MeetingAnalyzer: React.FC = () => {
                 tasks: transformedTasks
             });
             setView('result');
-        } catch (err: any) {
-            setError(err.message || 'Something went wrong during analysis');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'Something went wrong during analysis');
             setView('choice');
         }
     };
@@ -152,8 +152,8 @@ export const MeetingAnalyzer: React.FC = () => {
 
             setView('processing');
             setMeetingUrl('');
-        } catch (err: any) {
-            setError(err.message || 'Failed to invite meeting bot');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'Failed to invite meeting bot');
             setView('choice');
         }
     };

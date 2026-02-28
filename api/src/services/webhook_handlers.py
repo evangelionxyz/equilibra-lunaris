@@ -40,6 +40,10 @@ async def sync_github_tasks(payload: dict):
         gh = get_github_client(installation_id)
         repo = gh.get_repo(repo_full_name)
         
+        # Get PR author to assign tasks if possible
+        pr_author_gh = payload.get("pull_request", {}).get("user", {}).get("login")
+        lead_assignee_id = None
+        
         # 1. Sweep for tasks.md files in openspec/changes/
         try:
             contents = repo.get_contents("openspec/changes")
@@ -73,6 +77,13 @@ async def sync_github_tasks(payload: dict):
         conn = _get_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
+            # Look up lead_assignee_id by gh_username
+            if pr_author_gh:
+                cur.execute("SELECT id FROM public.users WHERE gh_username = %s LIMIT 1;", (pr_author_gh,))
+                user_row = cur.fetchone()
+                if user_row:
+                    lead_assignee_id = user_row["id"]
+
             # Find project by repo URL
             cur.execute("SELECT id FROM public.projects WHERE %s = ANY(gh_repo_url) LIMIT 1;", (repo_url,))
             project_row = cur.fetchone()
@@ -123,8 +134,8 @@ async def sync_github_tasks(payload: dict):
                 # Insert new task
                 task_id = _generator.generate()
                 cur.execute(
-                    "INSERT INTO public.tasks (id, project_id, bucket_id, title, type, weight) VALUES (%s, %s, %s, %s, 'CODE', 1);",
-                    (task_id, project_id, target_bucket_id, task_title)
+                    "INSERT INTO public.tasks (id, project_id, bucket_id, lead_assignee_id, title, type, weight) VALUES (%s, %s, %s, %s, %s, 'CODE', 1);",
+                    (task_id, project_id, target_bucket_id, lead_assignee_id, task_title)
                 )
                 created_count += 1
             
@@ -348,7 +359,7 @@ def find_project_bucket_by_state(repo_url: str, target_state: str):
         
         # The Magic Query
         cur.execute(
-            "SELECT id FROM public.buckets WHERE project_id = %s AND state = %s AND is_deleted = False ORDER BY order_idx ASC LIMIT 1;", 
+            "SELECT id FROM public.buckets WHERE project_id = %s AND state = %s ORDER BY order_idx ASC LIMIT 1;", 
             (project_row["id"], target_state)
         )
         bucket_row = cur.fetchone()

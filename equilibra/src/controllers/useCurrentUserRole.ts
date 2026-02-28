@@ -20,7 +20,7 @@ export const useCurrentUserRole = (
       try {
         const members = await projectMemberService.getMembers(projectId);
         const member = members.find(
-          (m: any) => String(m.user_id) === String(userId),
+          (m: { user_id: number | string; role?: string }) => String(m.user_id) === String(userId),
         );
         setRole(member?.role || null);
         console.log("Member role:", member?.role);
