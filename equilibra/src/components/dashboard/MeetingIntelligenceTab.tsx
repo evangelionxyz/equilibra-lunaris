@@ -38,39 +38,20 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
     const [syncing, setSyncing] = useState(false);
     const [synced, setSynced] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [lastMeetingCount, setLastMeetingCount] = useState(0);
 
     const { createTask } = useTasks(projectId);
-
-    // Get current meeting count for polling reference
-    const fetchMeetingCount = async () => {
-        try {
-            const response = await fetch(`http://localhost:8000/meetings/project/${projectId}`, { credentials: 'include' });
-            if (response.ok) {
-                const data = await response.json();
-                return data.length;
-            }
-        } catch (err) {
-            console.error("Failed to fetch meeting count", err);
-        }
-        return 0;
-    };
 
     // Polling effect for background processing (Meeting Link)
     useEffect(() => {
         let interval: any;
         if (view === 'processing') {
             interval = setInterval(async () => {
-                const response = await fetch(`http://localhost:8000/meetings/project/${projectId}`, { credentials: 'include' });
+                const response = await fetch(`http://localhost:8000/meetings/poll-analysis`, { credentials: 'include' });
                 if (response.ok) {
-                    const meetings = await response.json();
-                    if (meetings.length > lastMeetingCount) {
-                        const latest = meetings[0];
+                    const data = await response.json();
+                    if (data.status === 'success' && data.data && data.data.mom) {
                         try {
-                            const momContent = JSON.parse(latest.mom_content);
-                            const momData = momContent.mom || momContent;
-
-                            const transformedTasks: Task[] = (latest.proposed_tasks || []).map((t: any, i: number) => ({
+                            const transformedTasks: Task[] = (data.proposed_tasks || []).map((t: any, i: number) => ({
                                 id: `task-bg-${i}-${Date.now()}`,
                                 title: t.title,
                                 pic: t.assignee_username || 'TBD',
@@ -80,21 +61,33 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
                             }));
 
                             setResult({
-                                mom: momData,
-                                tasks: transformedTasks
+                                mom: data.data.mom,
+                                tasks: transformedTasks,
+                                alertId: data.alert_id
                             });
+
+                            // Refresh history (optional: we can trigger it)
+                            if (onMeetingCreated) {
+                                // Since we don't have the fully inserted meeting ID from the background db insertion,
+                                // we just pass an empty trigger, or fetch count to re-trigger.
+                                onMeetingCreated({ id: 'bg-refresh' });
+                            }
 
                             setView('result');
                             clearInterval(interval);
                         } catch (e) {
                             console.error("Failed to parse background meeting content", e);
                         }
+                    } else if (data.status === 'error') {
+                        setError("Background analysis failed.");
+                        setView('choice');
+                        clearInterval(interval);
                     }
                 }
             }, 5000);
         }
         return () => clearInterval(interval);
-    }, [view, lastMeetingCount]);
+    }, [view]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -154,9 +147,6 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
         setError(null);
 
         try {
-            const count = await fetchMeetingCount();
-            setLastMeetingCount(count);
-
             const response = await fetch(`http://localhost:8000/invite-bot?meeting_url=${encodeURIComponent(meetingUrl)}&project_id=${projectId}`, {
                 method: 'POST',
                 credentials: 'include'

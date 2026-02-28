@@ -217,6 +217,16 @@ def _fallback_analysis_payload(reason: str) -> dict:
 async def get_meetings(project_id: int, current_user: dict = Depends(get_current_user)):
     return await list_meetings_for_project(project_id)
 
+@router.get("/meetings/poll-analysis")
+async def poll_analysis_results(current_user: dict = Depends(get_current_user)):
+    user_uuid = str(current_user.get("id"))
+    results = TEMP_ANALYSIS_RESULTS.get(user_uuid, [])
+    if results:
+         # Return and clear the result for this user
+         payload = results.pop(0)
+         return payload
+    return {"status": "pending"}
+
 class MeetingSyncRequest(BaseModel):
     project_id: int
     title: str
