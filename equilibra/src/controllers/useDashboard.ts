@@ -24,24 +24,27 @@ export const useDashboard = (projectId: string | number) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboard = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      setLoading(true);
-      const data = await apiFetch<DashboardData>(
-        `/projects/${projectId}/dashboard`,
-      );
-      setMembers(data.members ?? []);
-      setMetrics(data.metrics ?? []);
-      setActivity(data.activity ?? []);
-      setError(null);
-    } catch (err) {
-      console.error("useDashboard fetch error:", err);
-      setError("Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
+  const fetchDashboard = useCallback(
+    async (silent = false) => {
+      if (!projectId) return;
+      try {
+        if (!silent) setLoading(true);
+        const data = await apiFetch<DashboardData>(
+          `/projects/${projectId}/dashboard`,
+        );
+        setMembers(data.members ?? []);
+        setMetrics(data.metrics ?? []);
+        setActivity(data.activity ?? []);
+        setError(null);
+      } catch (err) {
+        console.error("useDashboard fetch error:", err);
+        setError("Failed to load dashboard data");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [projectId],
+  );
 
   useEffect(() => {
     fetchDashboard();

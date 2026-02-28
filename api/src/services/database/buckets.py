@@ -13,7 +13,9 @@ from services.database.id_generator import _generator
 class DatabaseBucket(BaseModel):
     id: Optional[int] = None
     project_id: Optional[int] = None
+    name: Optional[str] = ""
     state: Optional[str] = ""
+    is_system_locked: Optional[bool] = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order_idx: Optional[int] = None
@@ -38,7 +40,9 @@ def db_create_bucket(item: DatabaseBucket):
         mapping = {
             "id": _generator.generate(),
             "project_id": item.project_id,
+            "name": item.name or item.state or "Untitled",
             "state": item.state,
+            "is_system_locked": item.is_system_locked if item.is_system_locked is not None else False,
             "created_at": item.created_at,
             "order_idx": item.order_idx,
         }
@@ -57,7 +61,7 @@ def db_create_bucket(item: DatabaseBucket):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.buckets ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, state, created_at, updated_at, order_idx;"
+        sql = f"INSERT INTO public.buckets ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, name, state, is_system_locked, created_at, updated_at, order_idx;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -83,7 +87,7 @@ def db_get_buckets(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx FROM public.buckets WHERE project_id = %s;",
+            "SELECT id, project_id, name, state, is_system_locked, created_at, updated_at, order_idx FROM public.buckets WHERE project_id = %s ORDER BY order_idx ASC;",
             (project_id,)
         )
         rows = cur.fetchall()
@@ -101,7 +105,7 @@ def db_get_bucket_by_id(project_id: int, bucket_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx FROM public.buckets WHERE id = %s AND project_id = %s LIMIT 1;",
+            "SELECT id, project_id, name, state, is_system_locked, created_at, updated_at, order_idx FROM public.buckets WHERE id = %s AND project_id = %s LIMIT 1;",
             (bucket_id, project_id),
         )
         row = cur.fetchone()

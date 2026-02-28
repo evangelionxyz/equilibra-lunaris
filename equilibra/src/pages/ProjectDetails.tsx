@@ -3,6 +3,7 @@ import { useBoard } from '../controllers/useBoard';
 import { useTasks } from '../controllers/useTasks';
 import { useMeetings } from '../controllers/useMeetings';
 import { useBuckets } from '../controllers/useBuckets';
+import { useDashboard } from '../controllers/useDashboard';
 import { LayoutDashboard, Briefcase, Video, Settings, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { ProjectOverviewPM, ProjectOverviewDev } from '../components/dashboard/ProjectOverviews';
 import { ProjectSettingsTab } from '../components/dashboard/ProjectSettingsTab';
@@ -52,7 +53,8 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
   const { role, loading: roleLoading } = useCurrentUserRole(projectId);
   const { members } = useProjectMembers(projectId);
   // useBoard: single request for both buckets and tasks (strict data contract)
-  const { buckets, tasks, loading: boardLoading } = useBoard(projectId);
+  const { buckets, tasks, loading: boardLoading, refreshBoard } = useBoard(projectId);
+  const { refreshDashboard } = useDashboard(projectId);
   // Keep mutation hooks — they still POST/PUT/DELETE via the original endpoints
   const { createBucket, reorderBuckets, deleteBucket } = useBuckets(projectId);
   const { createTask, updateTask, deleteTask, reorderTasks } = useTasks(projectId);
@@ -66,10 +68,12 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
 
   const handleCreateTask = async (data: { project_id: number | string; title: string; type: TaskType; weight: number; bucket_id?: number | string }) => {
     await createTask(data);
+    await Promise.all([refreshBoard(true), refreshDashboard(true)]);
   };
 
   const handleUpdateTask = async (taskId: number | string, data: Partial<Task>) => {
     await updateTask(taskId, data);
+    await Promise.all([refreshBoard(true), refreshDashboard(true)]);
   };
 
   const handleDropTask = async (taskId: number | string, newBucketId: number | string, targetTaskId?: number | string) => {
@@ -97,6 +101,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
     const taskIds = filteredTasks.map(t => t.id!);
 
     await reorderTasks(newBucketId, taskIds);
+    await Promise.all([refreshBoard(true), refreshDashboard(true)]);
   };
 
   const handleCreateMeeting = async (data: { project_id: number | string; title: string; date: string; time: string; duration?: string }) => {
@@ -109,6 +114,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
       await createBucket(newBucketName.trim());
       setNewBucketName('');
       setIsCreatingBucket(false);
+      await Promise.all([refreshBoard(true), refreshDashboard(true)]);
     } catch (e) {
       console.error(e);
       alert('Failed to create bucket');
@@ -135,6 +141,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
 
     // Call reorder api with new IDs
     await reorderBuckets(newBuckets.map(b => b.id!));
+    await Promise.all([refreshBoard(true), refreshDashboard(true)]);
   };
 
   const tabs = ['Overview', 'Tasks', 'MoM & Meetings', 'Settings'];
@@ -202,7 +209,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                     <KanbanColumn
                       key={bucket.id}
                       id={bucket.id!}
-                      name={bucket.state}
+                      name={bucket.name || bucket.state}
                       colorClass={STATUS_COLORS[bucket.state] || 'bg-slate-500'}
                       statusText="ACTIVE"
                       taskCount={colTasks.length}
@@ -228,7 +235,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
                             onDropTask={(draggedTaskId, targetTaskId) => handleDropTask(draggedTaskId, bucket.id!, targetTaskId)}
                           />
                           <button
-                            onClick={() => deleteTask(task.id!)}
+                            onClick={async () => { await deleteTask(task.id!); await Promise.all([refreshBoard(true), refreshDashboard(true)]); }}
                             className="absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 p-1 rounded bg-[#1F2937] text-slate-500 hover:text-[#EF4444] transition-all"
                           >
                             <Trash2 size={10} />
@@ -363,6 +370,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
             try {
               await deleteBucket(bucketToDelete);
               setBucketToDelete(null);
+              await Promise.all([refreshBoard(true), refreshDashboard(true)]);
             } catch (err) {
               setBucketToDelete(null);
             }
