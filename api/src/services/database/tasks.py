@@ -7,17 +7,17 @@ import psycopg2.extras
 
 from services.database.database import _get_conn
 from services.database.database import _put_conn
-from services.database.database import router as db_router
+from services.database.database import router as db_router, SafeId
 from services.database.id_generator import _generator
 
 class DatabaseTask(BaseModel):
-    id: Optional[int] = None
-    project_id: Optional[int] = None
-    bucket_id: Optional[int] = None
-    meeting_id: Optional[int] = None
-    parent_task_id: Optional[int] = None
-    lead_assignee_id: Optional[int] = None
-    suggested_assignee_id: Optional[int] = None
+    id: Optional[SafeId] = None
+    project_id: Optional[SafeId] = None
+    bucket_id: Optional[SafeId] = None
+    meeting_id: Optional[SafeId] = None
+    parent_task_id: Optional[SafeId] = None
+    lead_assignee_id: Optional[SafeId] = None
+    suggested_assignee_id: Optional[SafeId] = None
     title: str
     description: Optional[str] = None
     type: str  # CODE, REQUIREMENT, DESIGN, OTHER
@@ -36,17 +36,30 @@ def db_create_task(task: DatabaseTask):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+        # Resolve bucket_id if it's 'draft' or missing
+        target_bucket_id = task.bucket_id
+        if target_bucket_id == 'draft' or target_bucket_id is None:
+            cur.execute(
+                "SELECT id FROM public.buckets WHERE project_id = %s AND state = 'DRAFT' LIMIT 1;",
+                (task.project_id,)
+            )
+            row = cur.fetchone()
+            if row:
+                target_bucket_id = row['id']
+            elif target_bucket_id == 'draft':
+                raise HTTPException(status_code=400, detail="No DRAFT bucket found for this project")
+
         # Generate new order_idx if missing
         assigned_order_idx = task.order_idx
-        if assigned_order_idx is None and task.bucket_id is not None:
-            cur.execute("SELECT COALESCE(MAX(order_idx), -1) + 1 AS next_idx FROM public.tasks WHERE bucket_id = %s;", (task.bucket_id,))
+        if assigned_order_idx is None and target_bucket_id is not None:
+            cur.execute("SELECT COALESCE(MAX(order_idx), -1) + 1 AS next_idx FROM public.tasks WHERE bucket_id = %s;", (target_bucket_id,))
             row = cur.fetchone()
             assigned_order_idx = row['next_idx'] if row else 0
 
         mapping = {
             "id": _generator.generate(),    
             "project_id": task.project_id,
-            "bucket_id": task.bucket_id,
+            "bucket_id": target_bucket_id,
             "meeting_id": task.meeting_id,
             "parent_task_id": task.parent_task_id,
             "lead_assignee_id": task.lead_assignee_id,

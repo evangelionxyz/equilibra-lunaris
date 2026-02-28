@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from config import settings
 from services.database.users import DatabaseUser, get_or_create_user
+from services.database.database import SafeId
 from starlette.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -20,7 +21,7 @@ _bearer = HTTPBearer(auto_error=False)
 AUTH_COOKIE = "gh_token"
 
 class AuthMeResponse(BaseModel):
-    id: int | None = None
+    id: SafeId | None = None
     login: str | None = None
     name: str | None = None
     email: str | None = None

@@ -7,12 +7,12 @@ import psycopg2.extras
 
 from services.database.database import _get_conn
 from services.database.database import _put_conn
-from services.database.database import router as db_router
+from services.database.database import router as db_router, SafeId
 from services.database.id_generator import _generator
 
 class DatabaseBucket(BaseModel):
-    id: Optional[int] = None
-    project_id: Optional[int] = None
+    id: Optional[SafeId] = None
+    project_id: Optional[SafeId] = None
     name: Optional[str] = ""
     state: Optional[str] = ""
     is_system_locked: Optional[bool] = False
@@ -119,7 +119,7 @@ def db_get_bucket_by_id(project_id: int, bucket_id: int):
 
 
 @db_router.put("/projects/{project_id}/buckets/reorder")
-def db_reorder_buckets(project_id: int, bucket_ids: list[int]):
+def db_reorder_buckets(project_id: int, bucket_ids: list[SafeId]):
     conn = _get_conn()
     cur = None
     try:

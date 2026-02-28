@@ -10,15 +10,15 @@ import logging
 
 from services.database.database import _get_conn
 from services.database.database import _put_conn
-from services.database.database import router as db_router
+from services.database.database import router as db_router, SafeId
 from services.database.id_generator import _generator
 
 logger = logging.getLogger(__name__)
 
 class DatabaseProjectMember(BaseModel):
-    id: Optional[int] = None
-    user_id: Optional[int] = None
-    project_id: Optional[int] = None
+    id: Optional[SafeId] = None
+    user_id: Optional[SafeId] = None
+    project_id: Optional[SafeId] = None
     role: Optional[str] = None
     kpi_score: Optional[float] = None
     max_capacity: Optional[int] = None
@@ -27,7 +27,7 @@ class DatabaseProjectMember(BaseModel):
 
 
 @db_router.post("/projects/{project_id}/members")
-def db_create_member(project_id: int, member: DatabaseProjectMember):
+def db_create_member(project_id: SafeId, member: DatabaseProjectMember):
     conn = _get_conn()
     cur = None
     try:
@@ -108,7 +108,7 @@ def db_get_my_project_members(current_user: dict = Depends(get_current_user)):
 
 
 @db_router.get("/projects/{project_id}/members")
-def db_get_members(project_id: int):
+def db_get_members(project_id: SafeId):
     conn = _get_conn()
     cur = None
     try:
@@ -131,7 +131,7 @@ def db_get_members(project_id: int):
 
 
 @db_router.get("/projects/{project_id}/members/{member_id}")
-def db_get_member_by_id(project_id: int, member_id: int):
+def db_get_member_by_id(project_id: SafeId, member_id: SafeId):
     conn = _get_conn()
     cur = None
     try:

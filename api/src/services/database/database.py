@@ -4,7 +4,8 @@ import tempfile
 import psycopg2
 import psycopg2.pool
 from config import settings
-from typing import Optional
+from typing import Optional, Annotated, Any
+from pydantic import BeforeValidator, PlainSerializer
 from pathlib import Path
 from fastapi import APIRouter
 
@@ -12,6 +13,14 @@ router = APIRouter()
 
 _pool: Optional[psycopg2.pool.ThreadedConnectionPool] = None
 _ssl_root_cert_path: Optional[str] = None
+
+# Custom Pydantic type to ensure IDs are always serialized as strings
+# This prevents BigInt rounding issues in JavaScript/React.
+SafeId = Annotated[
+    str, 
+    BeforeValidator(lambda v: str(v) if v is not None else None),
+    PlainSerializer(lambda v: str(v) if v is not None else None, when_used='json')
+]
 
 
 def _get_ssl_root_cert_path() -> Optional[str]:

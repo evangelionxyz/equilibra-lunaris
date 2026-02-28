@@ -200,7 +200,7 @@ export const MeetingIntelligenceTab: React.FC<MeetingIntelligenceTabProps> = ({ 
                         title: task.title,
                         type: 'REQUIREMENT',
                         weight: task.priority === 'high' ? 8 : task.priority === 'medium' ? 5 : 3,
-                        status: 'DRAFT'
+                        bucket_id: 'draft'
                     });
                 }
             }

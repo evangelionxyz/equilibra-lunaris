@@ -5,14 +5,15 @@ from fastapi import HTTPException
 import psycopg2
 import psycopg2.extras
 
-from services.database.database import _get_conn, _put_conn
-from services.database.database import router as db_router
+from services.database.database import _get_conn
+from services.database.database import _put_conn
+from services.database.database import router as db_router, SafeId
 from services.database.id_generator import _generator
 
 
 class DatabaseActivity(BaseModel):
-    id: Optional[int] = None
-    project_id: int
+    id: Optional[SafeId] = None
+    project_id: str
     user_name: str
     action: str     # e.g. 'pushed', 'moved', 'generated'
     target: str     # e.g. 'auth-v2', 'Task A to QA'

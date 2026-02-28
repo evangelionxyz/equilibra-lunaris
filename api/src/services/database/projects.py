@@ -10,16 +10,22 @@ import psycopg2.extras
 
 from services.database.database import _get_conn
 from services.database.database import _put_conn
-from services.database.database import router as db_router
+from services.database.database import router as db_router, SafeId
 from services.database.id_generator import _generator
+from services.database.buckets import DatabaseBucket
+from services.database.tasks import DatabaseTask
 
 class DatabaseProject(BaseModel):
-    id: Optional[int] = None
+    id: Optional[SafeId] = None
     name: str
     gh_repo_url: Optional[list[str]] = Field(default_factory=list)
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+class BoardResponse(BaseModel):
+    buckets: list[DatabaseBucket]
+    tasks: list[DatabaseTask]
 
 
 @db_router.post("/projects")
@@ -217,7 +223,7 @@ def db_delete_project(project_id: int):
 # GET /projects/{project_id}/board  — Kanban Data Contract
 # Returns ONLY the fields the UI needs. No description, no branch_name.
 # ---------------------------------------------------------------------------
-@db_router.get("/projects/{project_id}/board")
+@db_router.get("/projects/{project_id}/board", response_model=BoardResponse)
 def db_get_project_board_data(project_id: int):
     conn = _get_conn()
     cur = None
@@ -241,7 +247,10 @@ def db_get_project_board_data(project_id: int):
         )
         tasks = cur.fetchall()
 
-        return {"buckets": buckets, "tasks": tasks}
+        return {
+            "buckets": [DatabaseBucket(**b) for b in buckets],
+            "tasks": [DatabaseTask(**t) for t in tasks]
+        }
     finally:
         if cur is not None:
             cur.close()
@@ -267,6 +276,12 @@ def db_get_project_dashboard_data(project_id: int):
             (project_id,)
         )
         members = cur.fetchall()
+        # Cast Decimal to float for JSON serialization safety
+        for m in members:
+            if m["kpi_score"] is not None:
+                m["kpi_score"] = float(m["kpi_score"])
+            if m["current_load"] is not None:
+                m["current_load"] = float(m["current_load"])
 
         # Activity — last 20 entries
         cur.execute(
@@ -302,7 +317,12 @@ def db_get_project_dashboard_data(project_id: int):
             }
         ]
 
-        return {"members": members, "metrics": metrics, "activity": activities}
+        from services.database.users import DatabaseUser
+        return {
+            "members": members, # members already handled with floats above, but could map to a PM model if needed
+            "metrics": metrics,
+            "activity": activities
+        }
     finally:
         if cur is not None:
             cur.close()

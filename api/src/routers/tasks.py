@@ -2,10 +2,11 @@ from typing import List, Literal, Optional
 
 import psycopg2
 import psycopg2.extras
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from services.database.database import _get_conn, _put_conn
+from services.database.database import _get_conn, _put_conn, SafeId
+from services.database.tasks import db_create_task, db_update_task
 from services.database.id_generator import _generator
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["Tasks"])
@@ -20,12 +21,12 @@ class TaskReviewItem(BaseModel):
     description: Optional[str] = None
     weight: int = Field(..., ge=1, le=8)
     type: Literal["CODE", "REQUIREMENT", "DESIGN", "OTHER"]
-    assignee_id: Optional[int] = None
+    assignee_id: Optional[SafeId] = None
 
 
 class BatchReviewPayload(BaseModel):
-    alert_id: int
-    project_id: int
+    alert_id: SafeId
+    project_id: SafeId
     tasks: List[TaskReviewItem] = Field(..., min_length=1)
 
 
