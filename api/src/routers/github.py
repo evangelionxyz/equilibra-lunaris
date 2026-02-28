@@ -36,79 +36,47 @@ def list_repos(installation_id: int | None = None):
     return {"repos": repos}
 
 
+async def verify_signature(
+    request: Request,
+    x_hub_signature_256: str | None = Header(default=None),
+) -> dict:
+    if not x_hub_signature_256:
+        raise HTTPException(status_code=401, detail="Missing signature")
+    
+    raw_body = await request.body()
+    expected = "sha256=" + __import__("hmac").new(
+        __import__("config").settings.gh_webhook_secret.encode(),
+        raw_body,
+        __import__("hashlib").sha256,
+    ).hexdigest()
+
+    if not __import__("hmac").compare_digest(expected, x_hub_signature_256):
+        logger.warning("Invalid webhook signature detected.")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        return __import__("json").loads(raw_body)
+    except __import__("json").JSONDecodeError:
+        logger.error("Invalid JSON payload received.")
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
 @router.post("/github/webhook")
 async def github_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    x_hub_signature_256: str | None = Header(default=None),
+    payload: dict = Depends(verify_signature),
     x_github_event: str | None = Header(default=None),
 ):
     """
     Receive and verify GitHub webhook payloads.
     Only processes events whose signature matches the webhook secret.
     """
-    raw_body = await request.body()
-
-    if not verify_webhook_signature(raw_body, x_hub_signature_256):
-        logger.warning("Invalid webhook signature detected.")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-    try:
-        payload = json.loads(raw_body)
-    except json.JSONDecodeError:
-        logger.error("Invalid JSON payload received.")
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
     event = x_github_event or "unknown"
-    action = payload.get("action", "")
-
-    # ------------------------------------------------------------------
-    # THE EVENT DISPATCHER
-    # ------------------------------------------------------------------
-    if event == "pull_request":
-        if action in ["opened", "reopened", "synchronize"]:
-            pr_number = payload.get("pull_request", {}).get("number")
-            repo_full_name = payload.get("repository", {}).get("full_name")
-            installation_id = payload.get("installation", {}).get("id")
-
-            if not all([pr_number, repo_full_name, installation_id]):
-                logger.error("Webhook payload missing required PR metadata.")
-                return {"handled": False, "reason": "Missing metadata"}
-
-            background_tasks.add_task(
-                process_pr_evaluation, 
-                repo_full_name, 
-                pr_number, 
-                installation_id
-            )
-            logger.info(f"Queued PR #{pr_number} on {repo_full_name} for AI evaluation.")
-            return {"handled": True, "event": event, "action": action, "pr": pr_number, "status": "queued"}
-        
-        if action == "closed":
-            background_tasks.add_task(handle_pr_closed, payload)
-        elif action in ["opened", "reopened"]:
-            background_tasks.add_task(handle_pr_opened, payload)
-            
-    elif event == "pull_request_review":
-        from services.webhook_handlers import handle_pr_review_submitted
-        action = payload.get("action")
-        if action == "submitted":
-            background_tasks.add_task(handle_pr_review_submitted, payload)
-            logger.info(f"Queued PR #{payload.get('pull_request', {}).get('number')} closure handler.")
-            return {"handled": True, "event": event, "action": action, "status": "queued"}
-            
-        return {"handled": True, "event": event, "action": action, "status": "ignored_action"}
-
-    if event == "push":
-        ref = payload.get("ref", "")
-        repo = payload.get("repository", {}).get("full_name", "")
-        return {"handled": True, "event": event, "ref": ref, "repo": repo}
-
-    if event == "issues":
-        issue_number = payload.get("issue", {}).get("number")
-        return {"handled": True, "event": event, "action": action, "issue": issue_number}
-
-    return {"handled": False, "event": event, "action": action}
+    
+    from services.webhook_handlers import process_github_event
+    background_tasks.add_task(process_github_event, payload, event)
+    
+    return {"status": "accepted"}
 
 @router.get("/github/users/search")
 async def search_github_users(query: str, current_user: dict = Depends(get_current_user)):
