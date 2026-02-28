@@ -17,7 +17,6 @@ class DatabaseBucket(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     order_idx: Optional[int] = None
-    is_deleted: Optional[bool] = False
 
 
 @db_router.post("/buckets")
@@ -27,8 +26,12 @@ def db_create_bucket(item: DatabaseBucket):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+        # Compute next order_idx (based on active buckets)
         if item.order_idx is None:
-            cur.execute("SELECT COALESCE(MAX(order_idx), -1) as max_idx FROM public.buckets WHERE project_id = %s AND is_deleted = False", (item.project_id,))
+            cur.execute(
+                "SELECT COALESCE(MAX(order_idx), -1) as max_idx FROM public.buckets WHERE project_id = %s",
+                (item.project_id,)
+            )
             result = cur.fetchone()
             item.order_idx = result["max_idx"] + 1
 
@@ -38,7 +41,6 @@ def db_create_bucket(item: DatabaseBucket):
             "state": item.state,
             "created_at": item.created_at,
             "order_idx": item.order_idx,
-            "is_deleted": item.is_deleted,
         }
 
         columns = []
@@ -55,7 +57,7 @@ def db_create_bucket(item: DatabaseBucket):
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.buckets ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, state, created_at, updated_at, order_idx, is_deleted;"
+        sql = f"INSERT INTO public.buckets ({cols_sql}) VALUES ({vals_sql}) RETURNING id, project_id, state, created_at, updated_at, order_idx;"
 
         cur.execute(sql, params)
         conn.commit()
@@ -81,7 +83,7 @@ def db_get_buckets(project_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx, is_deleted FROM public.buckets WHERE project_id = %s AND is_deleted = False;",
+            "SELECT id, project_id, state, created_at, updated_at, order_idx FROM public.buckets WHERE project_id = %s;",
             (project_id,)
         )
         rows = cur.fetchall()
@@ -99,7 +101,7 @@ def db_get_bucket_by_id(project_id: int, bucket_id: int):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, project_id, state, created_at, updated_at, order_idx, is_deleted FROM public.buckets WHERE id = %s AND project_id = %s LIMIT 1;",
+            "SELECT id, project_id, state, created_at, updated_at, order_idx FROM public.buckets WHERE id = %s AND project_id = %s LIMIT 1;",
             (bucket_id, project_id),
         )
         row = cur.fetchone()
@@ -119,14 +121,11 @@ def db_reorder_buckets(project_id: int, bucket_ids: list[int]):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        # Defer constraints or do updates sequentially (to avoid unique constraint violations)
-        # We can temporarily set order_idx to negative values during the swap
-        
-        # Step 1: Set order_idx to negative equivalents based on the new array index
+        # Step 1: Set order_idx to negative equivalents to avoid unique constraint violations during swap
         for idx, b_id in enumerate(bucket_ids):
             cur.execute(
                 "UPDATE public.buckets SET order_idx = %s WHERE id = %s AND project_id = %s;",
-                (-(idx + 1000), b_id, project_id) # Offset to ensure no collision
+                (-(idx + 1000), b_id, project_id)
             )
             
         # Step 2: Set absolute new order_idx
@@ -149,19 +148,18 @@ def db_reorder_buckets(project_id: int, bucket_ids: list[int]):
 
 @db_router.delete("/projects/{project_id}/buckets/{bucket_id}")
 def db_delete_bucket(project_id: int, bucket_id: int):
-    """Soft delete a bucket."""
+    """Hard delete a bucket. Refuses if the bucket still has tasks."""
     conn = _get_conn()
     cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         # Check if tasks are in the bucket
-        cur.execute("SELECT COUNT(*) as count FROM public.tasks WHERE bucket_id = %s AND is_deleted = False;", (bucket_id,))
+        cur.execute("SELECT COUNT(*) as count FROM public.tasks WHERE bucket_id = %s;", (bucket_id,))
         count = cur.fetchone()['count']
         if count > 0:
              raise HTTPException(status_code=400, detail="Cannot delete bucket with active tasks. Please move or delete tasks first.")
 
-        sql = "UPDATE public.buckets SET is_deleted = True, updated_at = NOW() WHERE id = %s AND project_id = %s RETURNING id;"
-        cur.execute(sql, (bucket_id, project_id))
+        cur.execute("DELETE FROM public.buckets WHERE id = %s AND project_id = %s RETURNING id;", (bucket_id, project_id))
         conn.commit()
         row = cur.fetchone()
         if row is None:
@@ -177,5 +175,3 @@ def db_delete_bucket(project_id: int, bucket_id: int):
         if cur is not None:
             cur.close()
         _put_conn(conn)
-
-

@@ -3,7 +3,7 @@ import type { Meeting, MeetingSource } from "../models";
 import { meetingService } from "../services/meetingService";
 import { useToast } from "../design-system/Toast";
 
-export const useMeetings = (projectId: number) => {
+export const useMeetings = (projectId: string | number) => {
   const { showToast } = useToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,12 +30,12 @@ export const useMeetings = (projectId: number) => {
 
   const createMeeting = useCallback(
     async (data: {
-      project_id: number;
+      project_id: number | string;
       title: string;
       date: string;
       time: string;
       duration?: string;
-      source_type?: MeetingSource;
+      source_type?: MeetingSource | string;
       mom_summary?: string;
       key_decisions?: string[];
       action_items?: any[];
@@ -55,8 +55,8 @@ export const useMeetings = (projectId: number) => {
   );
 
   const deleteMeeting = useCallback(
-    async (id: number) => {
-      setMeetings((prev) => prev.filter((m) => m.id !== id));
+    async (id: string | number) => {
+      setMeetings((prev) => prev.filter((m) => String(m.id) !== String(id)));
       showToast("Meeting removed", "info");
     },
     [showToast],

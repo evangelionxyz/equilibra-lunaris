@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { ProjectMember } from "../models";
 import { userService } from "../services/userService";
 
-export const useProjectMembers = (projectId: number) => {
+export const useProjectMembers = (projectId: string | number) => {
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Bucket } from "../models";
 import { bucketService } from "../services/bucketService";
 
-export const useBuckets = (projectId: number) => {
+export const useBuckets = (projectId: string | number) => {
     const [buckets, setBuckets] = useState<Bucket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export const useBuckets = (projectId: number) => {
         async (stateName: string) => {
             try {
                 const newBucket = await bucketService.createBucket({
-                    project_id: Number(projectId),
+                    project_id: projectId,
                     state: stateName
                 });
                 setBuckets(prev => [...prev, newBucket]);
@@ -46,11 +46,11 @@ export const useBuckets = (projectId: number) => {
     );
 
     const reorderBuckets = useCallback(
-        async (bucketIds: number[]) => {
+        async (bucketIds: (number | string)[]) => {
             try {
                 // Optimistic UI update
                 const reordered = bucketIds.map((id, index) => {
-                    const bucket = buckets.find(b => b.id === id);
+                    const bucket = buckets.find(b => String(b.id) === String(id));
                     return { ...bucket!, order_idx: index };
                 });
                 setBuckets(reordered);
@@ -68,7 +68,7 @@ export const useBuckets = (projectId: number) => {
     );
 
     const deleteBucket = useCallback(
-        async (bucketId: number) => {
+        async (bucketId: number | string) => {
             try {
                 // Optimistic UI update
                 setBuckets(prev => prev.filter(b => String(b.id) !== String(bucketId)));

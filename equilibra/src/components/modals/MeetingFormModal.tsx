@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { X, Video } from 'lucide-react';
 
 interface MeetingFormModalProps {
-  projectId: number;
+  projectId: number | string;
   onClose: () => void;
   onSubmit: (data: {
-    project_id: number;
+    project_id: number | string;
     title: string;
     date: string;
     time: string;
@@ -16,7 +16,7 @@ interface MeetingFormModalProps {
 export const MeetingFormModal: React.FC<MeetingFormModalProps> = ({ projectId, onClose, onSubmit }) => {
   const now = new Date();
   const defaultDate = now.toISOString().split('T')[0];
-  const defaultTime = `${String(now.getHours()).padStart(2,'0')}:00`;
+  const defaultTime = `${String(now.getHours()).padStart(2, '0')}:00`;
 
   const [meetingTitle, setMeetingTitle] = useState('');
   const [date, setDate] = useState(defaultDate);
@@ -91,11 +91,10 @@ export const MeetingFormModal: React.FC<MeetingFormModalProps> = ({ projectId, o
                   key={d}
                   type="button"
                   onClick={() => setDuration(d)}
-                  className={`flex-1 py-2 rounded-lg text-[12px] font-semibold border transition-all ${
-                    duration === d
+                  className={`flex-1 py-2 rounded-lg text-[12px] font-semibold border transition-all ${duration === d
                       ? 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/40'
                       : 'bg-[#0B0E14] text-slate-400 border-[#374151] hover:border-slate-500'
-                  }`}
+                    }`}
                 >
                   {d}m
                 </button>

@@ -9,7 +9,7 @@ import { useToast } from '../../design-system/Toast';
 import type { Project, ProjectMember, User, Bucket } from '../../models';
 
 interface ProjectSettingsTabProps {
-    projectId: number;
+    projectId: string | number;
 }
 
 export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectId }) => {
@@ -38,8 +38,8 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
         setLoading(true);
         try {
             const [p, m, b] = await Promise.all([
-                projectService.getProjectById(Number(projectId)),
-                projectMemberService.getMembers(Number(projectId)),
+                projectService.getProjectById(projectId),
+                projectMemberService.getMembers(projectId),
                 taskService.getBuckets(projectId)
             ]);
             setProject(p);
@@ -62,7 +62,7 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({ projectI
     const handleUpdateProject = async () => {
         if (!project) return;
         try {
-            const updated = await projectService.updateProject(Number(projectId), {
+            const updated = await projectService.updateProject(projectId, {
                 ...project,
                 name,
                 description,

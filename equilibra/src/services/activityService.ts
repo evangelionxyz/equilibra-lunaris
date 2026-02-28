@@ -2,7 +2,7 @@ import type { Activity } from "../models";
 import { apiFetch } from "./apiClient";
 
 export const activityService = {
-  getActivitiesByProject: async (projectId: number): Promise<Activity[]> => {
+  getActivitiesByProject: async (projectId: number | string): Promise<Activity[]> => {
     return await apiFetch<Activity[]>(`/projects/${projectId}/activities`);
   },
 
