@@ -6,9 +6,9 @@ const TASK_TYPES: TaskType[] = ['CODE', 'REQUIREMENT', 'DESIGN', 'NON-CODE', 'OT
 const TASK_STATUSES: TaskStatus[] = ['TODO', 'ONGOING', 'ON REVIEW', 'COMPLETED', 'DRAFT', 'PENDING'];
 
 interface TaskFormModalProps {
-  projectId: number;
+  projectId: number | string;
   onClose: () => void;
-  onSubmit: (data: { project_id: number; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number }) => Promise<void>;
+  onSubmit: (data: { project_id: number | string; title: string; type: TaskType; weight: number; status: TaskStatus, bucket_id?: number | string }) => Promise<void>;
   initial?: Partial<Task>;
   title?: string;
 }

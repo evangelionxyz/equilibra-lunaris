@@ -7,7 +7,7 @@ export const projectService = {
     return await apiFetch<Project[]>("/projects");
   },
 
-  getProjectById: async (id: number): Promise<Project> => {
+  getProjectById: async (id: number | string): Promise<Project> => {
     return await apiFetch<Project>(`/projects/${id}`);
   },
 
@@ -44,14 +44,14 @@ export const projectService = {
     return project;
   },
 
-  updateProject: async (id: number, data: Project): Promise<Project> => {
+  updateProject: async (id: number | string, data: Project): Promise<Project> => {
     return await apiFetch<Project>(`/projects/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
-  deleteProject: async (id: number): Promise<void> => {
+  deleteProject: async (id: number | string): Promise<void> => {
     await apiFetch(`/projects/${id}`, {
       method: "DELETE",
     });

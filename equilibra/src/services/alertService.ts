@@ -6,7 +6,7 @@ export const alertService = {
     return await apiFetch<Alert[]>("/alerts");
   },
 
-  resolveAlert: async (id: number): Promise<void> => {
+  resolveAlert: async (id: number | string): Promise<void> => {
     await apiFetch(`/alerts/${id}`, {
       method: "PUT",
       body: JSON.stringify({ is_resolved: true }),
@@ -14,8 +14,8 @@ export const alertService = {
   },
 
   confirmTasks: async (
-    alertId: number,
-    projectId: number,
+    alertId: number | string,
+    projectId: number | string,
     tasks: ExtractedTaskPayload[],
   ): Promise<{ status: string; tasks_created: number }> => {
     return await apiFetch("/tasks/batch-review", {

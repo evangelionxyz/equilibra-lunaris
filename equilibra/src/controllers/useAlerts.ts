@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Alert } from "../models";
 import { alertService } from "../services/alertService";
 
-export const useAlerts = (projectId?: number) => {
+export const useAlerts = (projectId?: string | number) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export const useAlerts = (projectId?: number) => {
       setLoading(true);
       const data = await alertService.getMyAlerts();
       const filtered = projectId
-        ? data.filter((a) => a.project_id === projectId)
+        ? data.filter((a) => String(a.project_id) === String(projectId))
         : data;
       setAlerts(filtered);
       setError(null);

@@ -52,7 +52,7 @@ function ProjectDetailsPageWrapper() {
     return null;
   }
 
-  return <ProjectDetailsPage projectId={Number(projectId)} />;
+  return <ProjectDetailsPage projectId={projectId} />;
 }
 
 import { ToastProvider } from './design-system/Toast';
