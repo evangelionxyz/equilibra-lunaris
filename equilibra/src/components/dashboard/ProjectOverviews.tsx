@@ -21,9 +21,16 @@ import { useUserProjectStats } from '../../controllers/useUserProjectStats';
 import { useAuth } from '../../auth/useAuth';
 
 import { Skeleton } from '../../design-system/Skeleton';
+import type { Task, Bucket } from '../../models';
 
 interface ProjectOverviewProps {
   projectId: string | number;
+}
+
+interface ProjectOverviewDevProps extends ProjectOverviewProps {
+  tasks: Task[];
+  buckets: Bucket[];
+  onDropTask: (taskId: string | number, newBucketId: string | number, targetTaskId?: string | number) => Promise<void>;
 }
 
 export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId }) => {
@@ -245,16 +252,41 @@ export const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ projectId })
   );
 };
 
-export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }) => {
+export const ProjectOverviewDev: React.FC<ProjectOverviewDevProps> = ({ 
+  projectId, 
+  tasks,
+  buckets,
+  onDropTask
+}) => {
   const { user } = useAuth();
-  const { tasks } = useTasks(projectId);
   const { activity: activities } = useDashboard(projectId);
   const { stats } = useUserProjectStats(projectId);
 
-  const myUserId = user?.db_user?.id || 1;
-  const activeTask = tasks.find(t => t.status === 'ONGOING' && t.lead_assignee_id === myUserId);
-  const myReviewTasks = tasks.filter(t => t.status === 'ON_REVIEW' && t.lead_assignee_id === myUserId);
-  const myQueueTasks = tasks.filter(t => t.status === 'TODO' && t.lead_assignee_id === myUserId).slice(0, 3);
+  const myUserId = user?.db_user?.id;
+  
+  // Find which tasks are in which buckets based on state
+  const getTasksByBucketState = (state: string) => {
+    const bucketIds = buckets.filter(b => b.state === state).map(b => String(b.id));
+    return tasks.filter(t => bucketIds.includes(String(t.bucket_id)) && String(t.lead_assignee_id) === String(myUserId));
+  };
+
+  const activeTask = getTasksByBucketState('ONGOING')[0];
+  const myReviewTasks = getTasksByBucketState('ON_REVIEW');
+  const myQueueTasks = getTasksByBucketState('TODO').slice(0, 3);
+
+  const handleStartWork = async (taskId: string | number) => {
+    const ongoingBucket = buckets.find(b => b.state === 'ONGOING');
+    if (!ongoingBucket) return;
+    await onDropTask(taskId, ongoingBucket.id!);
+  };
+
+  const handleMarkDone = async (task: Task) => {
+    const reviewBucket = buckets.find(b => b.state === 'ON_REVIEW');
+    const completedBucket = buckets.find(b => b.state === 'COMPLETED');
+    const targetBucketId = reviewBucket?.id || completedBucket?.id;
+    if (!targetBucketId) return;
+    await onDropTask(task.id!, targetBucketId);
+  };
 
   const getTimeAgo = (dateStr: string) => {
     // eslint-disable-next-line react-hooks/purity
@@ -283,7 +315,7 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
               <span className="text-[12px] text-slate-400 font-medium">Started {activeTask.last_activity_at ? getTimeAgo(String(activeTask.last_activity_at)) : 'Recently'}</span>
             </div>
             <div className="flex gap-4">
-              <Button variant="success"><CheckCircle2 size={16} /> Mark as Done</Button>
+              <Button variant="success" onClick={() => handleMarkDone(activeTask)}><CheckCircle2 size={16} /> Mark as Done</Button>
               <Button variant="outline" className="text-[#EF4444] border-[#EF4444]/30"><AlertCircle size={16} /> Report Blocker</Button>
             </div>
           </SurfaceCard>
@@ -292,7 +324,12 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
             <Zap className="text-slate-600 mb-4" size={48} />
             <h3 className="text-white font-bold text-[18px]">Ready to start?</h3>
             <p className="text-slate-400 text-[14px] mt-2 mb-6">You don't have an active task for this project.</p>
-            <Button variant="primary">Pick from Queue</Button>
+            {myQueueTasks.length > 0 && (
+              <Button variant="primary" onClick={() => handleStartWork(myQueueTasks[0].id!)}>Start Deep Work: {myQueueTasks[0].title}</Button>
+            )}
+            {myQueueTasks.length === 0 && (
+              <p className="text-slate-500 text-[12px]">No tasks assigned to you in the queue.</p>
+            )}
           </SurfaceCard>
         )}
 
@@ -341,14 +378,19 @@ export const ProjectOverviewDev: React.FC<ProjectOverviewProps> = ({ projectId }
         <SurfaceCard title="My Queue" subtitle="Up Next" icon={Target} rightElement={<Badge>{myQueueTasks.length} Pending</Badge>}>
           <div className="space-y-3">
             {myQueueTasks.map((t) => (
-              <div key={t.id!} className="p-3 rounded-lg bg-[#1F2937] border border-[#374151] flex flex-col gap-1 hover:border-[#3B82F6] transition-colors cursor-pointer">
+              <div 
+                key={t.id!} 
+                className="p-3 rounded-lg bg-[#1F2937] border border-[#374151] flex flex-col gap-1 hover:border-[#3B82F6] transition-colors cursor-pointer"
+                onClick={() => handleStartWork(t.id!)}
+              >
                 <div className="flex justify-between items-center">
                   <Badge variant={t.weight > 5 ? 'warning' : 'default'} className="!py-0 !px-1.5 !text-[8px]">{t.type}</Badge>
                   <span className="text-[10px] text-slate-400"><Clock size={10} className="inline mr-1" />{t.weight} pts</span>
                 </div>
                 <h5 className="text-white text-[13px] font-semibold mt-1 truncate">{t.title}</h5>
                 <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-2 flex justify-between items-center">
-                  <span>{t.status}</span> <div className="w-5 h-5 rounded-full bg-[#1F2937] border border-[#374151] text-white flex items-center justify-center text-[8px]">JD</div>
+                  <span>{t.bucket_id ? buckets.find(b => String(b.id) === String(t.bucket_id))?.state : 'TODO'}</span> 
+                  <div className="w-5 h-5 rounded-full bg-[#1F2937] border border-[#374151] text-white flex items-center justify-center text-[8px] font-bold">ME</div>
                 </div>
               </div>
             ))}

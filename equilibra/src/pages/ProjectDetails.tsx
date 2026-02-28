@@ -206,7 +206,14 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsProps> = ({ projectId })
         {/* Overview */}
         {activeTab === 'Overview' && (
           roleLoading ? <div className="text-slate-500 py-10 text-center">Resolving permissions...</div> :
-            isManager ? <ProjectOverviewPM projectId={projectId} /> : <ProjectOverviewDev projectId={projectId} />
+            isManager ? <ProjectOverviewPM projectId={projectId} /> : (
+              <ProjectOverviewDev 
+                projectId={projectId} 
+                tasks={tasks} 
+                buckets={buckets} 
+                onDropTask={handleDropTask}
+              />
+            )
         )}
 
         {/* Tasks — Kanban */}
