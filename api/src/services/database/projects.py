@@ -50,13 +50,23 @@ def db_create_project(project: DatabaseProject, current_user: dict | None = Depe
         
         cols_sql = ", ".join(columns)
         vals_sql = ", ".join(placeholders)
-        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id;"
+        sql = f"INSERT INTO public.projects ({cols_sql}) VALUES ({vals_sql}) RETURNING id, name, gh_repo_url, description, created_at, updated_at;"
 
         cur.execute(sql, params)
         row = cur.fetchone()
         if row is None:
             conn.rollback()
             raise HTTPException(status_code=500, detail="Failed to create project")
+        
+        # Initialize default "AI Drafts" bucket
+        project_id = row["id"]
+        bucket_id = _generator.generate()
+        cur.execute(
+            "INSERT INTO public.buckets (id, project_id, name, state, is_system_locked, order_idx) "
+            "VALUES (%s, %s, %s, %s, %s, %s);",
+            (bucket_id, project_id, "AI Drafts", "DRAFT", True, 0)
+        )
+
         conn.commit()
         return row
     except HTTPException:
@@ -79,7 +89,7 @@ def db_get_projects():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            "SELECT id, name, gh_repo_url, description, created_at, updated_at, roles, completed_bucket_id, in_review_bucket_id, todo_bucket_id FROM public.projects;"
+            "SELECT id, name, gh_repo_url, description, created_at, updated_at FROM public.projects;"
         )
         rows = cur.fetchall()
         return rows

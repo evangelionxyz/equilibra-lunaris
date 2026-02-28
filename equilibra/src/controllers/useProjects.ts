@@ -88,7 +88,7 @@ export const useProjects = () => {
   );
 
   const deleteProject = useCallback(
-    async (id: number) => {
+    async (id: number | string) => {
       try {
         await projectService.deleteProject(id);
         setProjects((prev) => prev.filter((p) => p.id !== id));
